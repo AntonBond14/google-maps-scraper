@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Google Maps Market View</title>
+  <style>
+    :root {
+      --bg: #f4f5f2;
+      --ink: #151a22;
+      --muted: #667085;
+      --panel: #ffffff;
+      --line: #d7dce2;
+      --blue: #1f6feb;
+      --green: #1f8a5b;
+      --red: #b42318;
+      --amber: #b54708;
+      --chip: #eef2f6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      font-size: 14px;
+    }
+    .shell {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: end;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 16px;
+      margin-bottom: 16px;
+    }
+    h1 {
+      font-size: 28px;
+      line-height: 1.2;
+      margin: 0 0 6px;
+      letter-spacing: 0;
+    }
+    h2 {
+      font-size: 15px;
+      margin: 0 0 12px;
+      letter-spacing: 0;
+    }
+    .source, .muted {
+      color: var(--muted);
+    }
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    input, select, button {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 6px;
+      height: 36px;
+      padding: 0 10px;
+      font: inherit;
+    }
+    button {
+      cursor: pointer;
+      background: var(--ink);
+      color: #fff;
+      border-color: var(--ink);
+    }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(120px, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .kpi, .panel, .place {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    .kpi {
+      padding: 12px;
+      min-height: 84px;
+    }
+    .kpi span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+    .kpi strong {
+      font-size: 25px;
+      line-height: 1;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+    .stack {
+      display: grid;
+      gap: 16px;
+    }
+    .panel {
+      padding: 14px;
+      min-width: 0;
+    }
+    .bars {
+      display: grid;
+      gap: 9px;
+    }
+    .bar-row {
+      display: grid;
+      grid-template-columns: minmax(88px, 135px) 1fr 34px;
+      gap: 8px;
+      align-items: center;
+    }
+    .bar-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .bar-track {
+      height: 10px;
+      background: #edf1f5;
+      border-radius: 5px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      background: var(--blue);
+    }
+    .map {
+      width: 100%;
+      height: 430px;
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(#e7edf5 1px, transparent 1px),
+        linear-gradient(90deg, #e7edf5 1px, transparent 1px),
+        #f9fbfd;
+      background-size: 42px 42px;
+      border-radius: 8px;
+      display: block;
+    }
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .matrix {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .cell {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px;
+      min-height: 76px;
+      background: #fbfcfd;
+    }
+    .cell strong {
+      display: block;
+      font-size: 22px;
+      margin-bottom: 4px;
+    }
+    .places {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .place {
+      padding: 12px;
+      min-height: 145px;
+      display: grid;
+      align-content: start;
+      gap: 8px;
+    }
+    .place h3 {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.25;
+    }
+    .meta {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .chip {
+      background: var(--chip);
+      border-radius: 999px;
+      padding: 3px 7px;
+      color: #344054;
+      font-size: 12px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      border-bottom: 1px solid #e7ebef;
+      padding: 8px 7px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    td a {
+      color: var(--blue);
+      text-decoration: none;
+    }
+    .table-wrap {
+      overflow-x: auto;
+    }
+    @media (max-width: 1180px) {
+      .kpis { grid-template-columns: repeat(3, 1fr); }
+      .layout, .main-grid { grid-template-columns: 1fr; }
+      .places { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 680px) {
+      .shell { padding: 12px; }
+      header { grid-template-columns: 1fr; }
+      .toolbar { justify-content: stretch; }
+      input, select, button { width: 100%; }
+      .kpis, .places, .matrix { grid-template-columns: 1fr; }
+      .map { height: 320px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div>
+        <h1>Google Maps Market View</h1>
+        <div class="source">Source: 1b36c1f9-94eb-438c-8aa6-28f7f80d5d85.csv</div>
+      </div>
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="Search place or category">
+        <select id="category"></select>
+        <button id="reset" type="button">Reset</button>
+      </div>
+    </header>
+
+    <section class="kpis" id="kpis"></section>
+
+    <div class="layout">
+      <aside class="stack">
+        <section class="panel">
+          <h2>Category Mix</h2>
+          <div id="categoryBars" class="bars"></div>
+        </section>
+        <section class="panel">
+          <h2>Price Coverage</h2>
+          <div id="priceBars" class="bars"></div>
+        </section>
+      </aside>
+
+      <main>
+        <div class="main-grid">
+          <section class="panel">
+            <h2>Location Spread</h2>
+            <svg id="map" class="map" role="img" aria-label="Location spread"></svg>
+          </section>
+          <section class="panel">
+            <h2>Quality Segments</h2>
+            <div id="matrix" class="matrix"></div>
+          </section>
+        </div>
+
+        <section class="panel" style="margin-bottom:16px">
+          <h2>Best Opportunities</h2>
+          <div id="places" class="places"></div>
+        </section>
+
+        <section class="panel">
+          <h2>All Places</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th data-sort="title">Title</th>
+                  <th data-sort="category">Category</th>
+                  <th data-sort="rating">Rating</th>
+                  <th data-sort="reviews">Reviews</th>
+                  <th data-sort="score">Score</th>
+                  <th data-sort="price">Price</th>
+                </tr>
+              </thead>
+              <tbody id="table"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script id="dataset" type="application/json">{&quot;rows&quot;: [{&quot;title&quot;: &quot;C.B. BARBAYANNIS&quot;, &quot;category&quot;: &quot;Greek restaurant&quot;, &quot;address&quot;: &quot;Emmanouil Benaki 94, Athina 106 81, Greece&quot;, &quot;website&quot;: &quot;https://barbayannis.gr/&quot;, &quot;phone&quot;: &quot;+30 21 0360 8018&quot;, &quot;price&quot;: &quot;€15–25&quot;, &quot;rating&quot;: 4.4, &quot;reviews&quot;: 996, &quot;lat&quot;: 37.986344, &quot;lon&quot;: 23.736423, &quot;link&quot;: &quot;https://www.google.com/maps/place/C.B.+BARBAYANNIS/data=!4m7!3m6!1s0x14a1bd38527006a3:0x62c9eccacfd7a76c!8m2!3d37.9863438!4d23.7364231!16s%2Fg%2F1wt6ggs2!19sChIJowZwUji9oRQRbKfXz8rsyWI?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 129.0}, {&quot;title&quot;: &quot;Millybird House&quot;, &quot;category&quot;: &quot;Coffee shop&quot;, &quot;address&quot;: &quot;Arrianou 29, Athina 116 35, Greece&quot;, &quot;website&quot;: &quot;&quot;, &quot;phone&quot;: &quot;+30 21 1406 3156&quot;, &quot;price&quot;: &quot;€5–10&quot;, &quot;rating&quot;: 4.8, &quot;reviews&quot;: 312, &quot;lat&quot;: 37.971392, &quot;lon&quot;: 23.744818, &quot;link&quot;: &quot;https://www.google.com/maps/place/Millybird+House/data=!4m7!3m6!1s0x14a1bd775725702d:0xf5dc1af6a99b3f84!8m2!3d37.971392!4d23.7448182!16s%2Fg%2F11grptc0zv!19sChIJLXAlV3e9oRQRhD-bqfYa3PU?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 127.9}, {&quot;title&quot;: &quot;Myller Coffee Shop&quot;, &quot;category&quot;: &quot;Coffee shop&quot;, &quot;address&quot;: &quot;Katsikogianni 9, Athina 105 54, Greece&quot;, &quot;website&quot;: &quot;https://www.instagram.com/myllercoffeeshop&quot;, &quot;phone&quot;: &quot;+30 21 1735 6629&quot;, &quot;price&quot;: &quot;€1–5&quot;, &quot;rating&quot;: 4.8, &quot;reviews&quot;: 1028, &quot;lat&quot;: 37.978984, &quot;lon&quot;: 23.72408, &quot;link&quot;: &quot;https://www.google.com/maps/place/Myller+Coffee+Shop/data=!4m7!3m6!1s0x14a1bd7dbb6fafd7:0x5f0498b540d79282!8m2!3d37.9789838!4d23.7240804!16s%2Fg%2F11sh03qxjz!19sChIJ169vu329oRQRgpLXQLWYBF8?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 137.0}, {&quot;title&quot;: &quot;Laluk Cafe-Bar&quot;, &quot;category&quot;: &quot;Coffee shop&quot;, &quot;address&quot;: &quot;Geor. Olimpiou 15, Athina 117 41, Greece&quot;, &quot;website&quot;: &quot;&quot;, &quot;phone&quot;: &quot;+30 21 3027 1894&quot;, &quot;price&quot;: &quot;€10–15&quot;, &quot;rating&quot;: 4.8, &quot;reviews&quot;: 3449, &quot;lat&quot;: 37.962856, &quot;lon&quot;: 23.722294, &quot;link&quot;: &quot;https://www.google.com/maps/place/Laluk+Cafe-Bar/data=!4m7!3m6!1s0x14a1bd04846cd95b:0x3dbe66dd6feca19b!8m2!3d37.9628563!4d23.7222938!16s%2Fg%2F11bw5_mh9y!19sChIJW9lshAS9oRQRm6Hsb91mvj0?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 133.0}, {&quot;title&quot;: &quot;Little Tree Books and Coffee&quot;, &quot;category&quot;: &quot;Coffee shop&quot;, &quot;address&quot;: &quot;Kavalloti 2, Athina 117 42, Greece&quot;, &quot;website&quot;: &quot;https://m.facebook.com/LittleTreeBooksandCoffee/&quot;, &quot;phone&quot;: &quot;+30 21 0924 3762&quot;, &quot;price&quot;: &quot;€5–10&quot;, &quot;rating&quot;: 4.7, &quot;reviews&quot;: 3222, &quot;lat&quot;: 37.968162, &quot;lon&quot;: 23.727051, &quot;link&quot;: &quot;https://www.google.com/maps/place/Little+Tree+Books+and+Coffee/data=!4m7!3m6!1s0x14a1bd1a11dfd849:0x54f8ff37020d4f3a!8m2!3d37.9681624!4d23.7270509!16s%2Fg%2F11c0xjnmtj!19sChIJSdjfERq9oRQROk8NAjf_-FQ?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 135.0}, {&quot;title&quot;: &quot;En Athinas | Cafe Athens&quot;, &quot;category&quot;: &quot;Coffee shop&quot;, &quot;address&quot;: &quot;Athinas 41, Athina 105 54, Greece&quot;, &quot;website&quot;: &quot;http://www.facebook.com/enathinas41/&quot;, &quot;phone&quot;: &quot;+30 21 0321 5115&quot;, &quot;price&quot;: &quot;€1–5&quot;, &quot;rating&quot;: 5.0, &quot;reviews&quot;: 785, &quot;lat&quot;: 37.979415, &quot;lon&quot;: 23.726693, &quot;link&quot;: &quot;https://www.google.com/maps/place/En+Athinas+%7C+Cafe+Athens/data=!4m7!3m6!1s0x14a1bd1cc9c16ad7:0xeb524b482c97da5d!8m2!3d37.9794148!4d23.7266932!16s%2Fg%2F11kln_5gv6!19sChIJ12rByRy9oRQRXdqXLEhLUus?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 140.7}, {&quot;title&quot;: &quot;Melina Mercouri Café&quot;, &quot;category&quot;: &quot;Coffee shop&quot;, &quot;address&quot;: &quot;Lisiou 22, Athina 105 56, Greece&quot;, &quot;website&quot;: &quot;https://cafemelina.gr/&quot;, &quot;phone&quot;: &quot;&quot;, &quot;price&quot;: &quot;€5–15&quot;, &quot;rating&quot;: 4.4, &quot;reviews&quot;: 3877, &quot;lat&quot;: 37.973338, &quot;lon&quot;: 23.728599, &quot;link&quot;: &quot;https://www.google.com/maps/place/Melina+Mercouri+Caf%C3%A9/data=!4m7!3m6!1s0x14a1bd17e3d7762b:0x14836a7f84584371!8m2!3d37.9733376!4d23.7285992!16s%2Fg%2F113f_fvdf!19sChIJK3bX4xe9oRQRcUNYhH9qgxQ?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 127.0}, {&quot;title&quot;: &quot;Cat Cafe Athens (7€/pers, Allowed Age 14+)&quot;, &quot;category&quot;: &quot;Coffee shop&quot;, &quot;address&quot;: &quot;Nileos 54, Athina 118 51, Greece&quot;, &quot;website&quot;: &quot;https://www.catcafe.gr/&quot;, &quot;phone&quot;: &quot;+30 21 1001 5504&quot;, &quot;price&quot;: &quot;€5–10&quot;, &quot;rating&quot;: 4.8, &quot;reviews&quot;: 2497, &quot;lat&quot;: 37.975342, &quot;lon&quot;: 23.714753, &quot;link&quot;: &quot;https://www.google.com/maps/place/Cat+Cafe+Athens+%287%E2%82%AC%2Fpers,+Allowed+Age+14%2B%29/data=!4m7!3m6!1s0x14a1bdd6c3639c21:0x1ae0467c75941e19!8m2!3d37.9753421!4d23.7147533!16s%2Fg%2F11sw0d7h1g!19sChIJIZxjw9a9oRQRGR6UdXxG4Bo?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 137.0}, {&quot;title&quot;: &quot;Taf Coffee&quot;, &quot;category&quot;: &quot;Cafe&quot;, &quot;address&quot;: &quot;Emmanouil Benaki 7, Athina 106 78, Greece&quot;, &quot;website&quot;: &quot;https://cafetaf.gr/&quot;, &quot;phone&quot;: &quot;+30 21 0380 0014&quot;, &quot;price&quot;: &quot;€1–5&quot;, &quot;rating&quot;: 4.6, &quot;reviews&quot;: 1681, &quot;lat&quot;: 37.983508, &quot;lon&quot;: 23.730831, &quot;link&quot;: &quot;https://www.google.com/maps/place/Taf+Coffee/data=!4m7!3m6!1s0x14a1bd308088c6c3:0xd9bd84c06beb0e11!8m2!3d37.9835085!4d23.7308313!16s%2Fg%2F1wb446b6!19sChIJw8aIgDC9oRQREQ7ra8CEvdk?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 133.0}, {&quot;title&quot;: &quot;White Turtle Coffeehouse&quot;, &quot;category&quot;: &quot;Coffee shop&quot;, &quot;address&quot;: &quot;Στουρναρη 43, Kaniggos 33, Athina 106 82, Greece&quot;, &quot;website&quot;: &quot;&quot;, &quot;phone&quot;: &quot;+30 21 0330 0030&quot;, &quot;price&quot;: &quot;€1–5&quot;, &quot;rating&quot;: 4.8, &quot;reviews&quot;: 687, &quot;lat&quot;: 37.987304, &quot;lon&quot;: 23.731025, &quot;link&quot;: &quot;https://www.google.com/maps/place/White+Turtle+Coffeehouse/data=!4m7!3m6!1s0x14a1bda4c09ae51d:0x7a1564cc76f4139c!8m2!3d37.9873041!4d23.7310253!16s%2Fg%2F11t25bdjkx!19sChIJHeWawKS9oRQRnBP0dsxkFXo?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 132.0}, {&quot;title&quot;: &quot;Coffee Joint&quot;, &quot;category&quot;: &quot;Cafe&quot;, &quot;address&quot;: &quot;Vourvachi 5-9, Athina 117 43, Greece&quot;, &quot;website&quot;: &quot;&quot;, &quot;phone&quot;: &quot;+30 21 2101 9237&quot;, &quot;price&quot;: &quot;€5–10&quot;, &quot;rating&quot;: 4.9, &quot;reviews&quot;: 2448, &quot;lat&quot;: 37.966841, &quot;lon&quot;: 23.731067, &quot;link&quot;: &quot;https://www.google.com/maps/place/Coffee+Joint/data=!4m7!3m6!1s0x14a1bd1122651b09:0x26f84d5db75e5333!8m2!3d37.9668409!4d23.7310666!16s%2Fg%2F11clsd33jd!19sChIJCRtlIhG9oRQRM1Net11N-CY?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 135.0}, {&quot;title&quot;: &quot;Kimolia Art Cafe&quot;, &quot;category&quot;: &quot;Cafe&quot;, &quot;address&quot;: &quot;Iperidou 5, Athina 105 58, Greece&quot;, &quot;website&quot;: &quot;https://www.kimolia-art-cafe.gr/&quot;, &quot;phone&quot;: &quot;+30 21 1184 8446&quot;, &quot;price&quot;: &quot;€5–10&quot;, &quot;rating&quot;: 4.5, &quot;reviews&quot;: 1779, &quot;lat&quot;: 37.973481, &quot;lon&quot;: 23.732588, &quot;link&quot;: &quot;https://www.google.com/maps/place/Kimolia+Art+Cafe/data=!4m7!3m6!1s0x14a1bd3dee5c3213:0x58012d092c742d32!8m2!3d37.9734812!4d23.7325881!16s%2Fg%2F1ts6d8lp!19sChIJEzJc7j29oRQRMi10LAktAVg?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 131.0}, {&quot;title&quot;: &quot;Tate Speciality Coffee&quot;, &quot;category&quot;: &quot;Cafe&quot;, &quot;address&quot;: &quot;Kolokotroni 25, Athina 105 62, Greece&quot;, &quot;website&quot;: &quot;&quot;, &quot;phone&quot;: &quot;+30 21 2107 3718&quot;, &quot;price&quot;: &quot;€1–5&quot;, &quot;rating&quot;: 4.9, &quot;reviews&quot;: 294, &quot;lat&quot;: 37.977524, &quot;lon&quot;: 23.731072, &quot;link&quot;: &quot;https://www.google.com/maps/place/Tate+Speciality+Coffee/data=!4m7!3m6!1s0x14a1bdff91d5f949:0xaa8d46e9b1db0e99!8m2!3d37.9775244!4d23.7310718!16s%2Fg%2F11s5bzpvvq!19sChIJSfnVkf-9oRQRmQ7bselGjao?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 129.6}, {&quot;title&quot;: &quot;Coffee Lab Athens&quot;, &quot;category&quot;: &quot;Coffee shop&quot;, &quot;address&quot;: &quot;Sofokleous 18, Athina 186 50, Greece&quot;, &quot;website&quot;: &quot;https://www.coffeelab.gr/&quot;, &quot;phone&quot;: &quot;+30 21 0331 8644&quot;, &quot;price&quot;: &quot;€1–5&quot;, &quot;rating&quot;: 4.9, &quot;reviews&quot;: 675, &quot;lat&quot;: 37.981053, &quot;lon&quot;: 23.727847, &quot;link&quot;: &quot;https://www.google.com/maps/place/Coffee+Lab+Athens/data=!4m7!3m6!1s0x14a1bd24dbd97811:0x18e212f37e9a0108!8m2!3d37.981053!4d23.727847!16s%2Fg%2F11gglq43rl!19sChIJEXjZ2yS9oRQRCAGafvMS4hg?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 138.0}, {&quot;title&quot;: &quot;This is Loco&quot;, &quot;category&quot;: &quot;Brunch restaurant&quot;, &quot;address&quot;: &quot;Falirou 47, Athina 117 42, Greece&quot;, &quot;website&quot;: &quot;http://www.thisisloco.gr/&quot;, &quot;phone&quot;: &quot;+30 21 0924 5654&quot;, &quot;price&quot;: &quot;€10–15&quot;, &quot;rating&quot;: 4.8, &quot;reviews&quot;: 2390, &quot;lat&quot;: 37.965424, &quot;lon&quot;: 23.726906, &quot;link&quot;: &quot;https://www.google.com/maps/place/This+is+Loco/data=!4m7!3m6!1s0x14a1bd5d824dde47:0x45d6ae661fb63ba9!8m2!3d37.9654242!4d23.7269056!16s%2Fg%2F11q2hzgdv2!19sChIJR95Ngl29oRQRqTu2H2au1kU?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 137.0}, {&quot;title&quot;: &quot;ACE Cafe athens&quot;, &quot;category&quot;: &quot;Cafe&quot;, &quot;address&quot;: &quot;Othonos, Athina 105 57, Greece&quot;, &quot;website&quot;: &quot;&quot;, &quot;phone&quot;: &quot;+30 21 0325 1621&quot;, &quot;price&quot;: &quot;€1–5&quot;, &quot;rating&quot;: 4.8, &quot;reviews&quot;: 59, &quot;lat&quot;: 37.974912, &quot;lon&quot;: 23.73443, &quot;link&quot;: &quot;https://www.google.com/maps/place/ACE+Cafe+athens/data=!4m7!3m6!1s0x14a1bd3ef52798ff:0x14839a2c87850341!8m2!3d37.9749124!4d23.7344297!16s%2Fg%2F1pzt0bgmq!19sChIJ_5gn9T69oRQRQQOFhyyagxQ?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 119.3}, {&quot;title&quot;: &quot;Samba Coffee Roasters | The Shop&quot;, &quot;category&quot;: &quot;Coffee store&quot;, &quot;address&quot;: &quot;Solonos 36, Athina 106 73, Greece&quot;, &quot;website&quot;: &quot;https://www.sambacafe.gr/&quot;, &quot;phone&quot;: &quot;+30 21 0363 7283&quot;, &quot;price&quot;: &quot;€1–5&quot;, &quot;rating&quot;: 4.8, &quot;reviews&quot;: 890, &quot;lat&quot;: 37.979415, &quot;lon&quot;: 23.737624, &quot;link&quot;: &quot;https://www.google.com/maps/place/Samba+Coffee+Roasters+%7C+The+Shop/data=!4m7!3m6!1s0x14a1bd25016b0537:0x9a604a9b9e73bab9!8m2!3d37.9794146!4d23.7376245!16s%2Fg%2F11jccfdsfm!19sChIJNwVrASW9oRQRubpznptKYJo?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 137.0}, {&quot;title&quot;: &quot;The Makers Athens&quot;, &quot;category&quot;: &quot;Brunch restaurant&quot;, &quot;address&quot;: &quot;Praxitelous 37, Athina 105 60, Greece&quot;, &quot;website&quot;: &quot;http://www.themakersathens.gr/&quot;, &quot;phone&quot;: &quot;+30 21 0331 1372&quot;, &quot;price&quot;: &quot;€10–15&quot;, &quot;rating&quot;: 4.6, &quot;reviews&quot;: 1497, &quot;lat&quot;: 37.979286, &quot;lon&quot;: 23.729074, &quot;link&quot;: &quot;https://www.google.com/maps/place/The+Makers+Athens/data=!4m7!3m6!1s0x14a1bdcf3940e32f:0x4afd8b017502c65c!8m2!3d37.9792864!4d23.729074!16s%2Fg%2F11ns5fh88f!19sChIJL-NAOc-9oRQRXMYCdQGL_Uo?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 133.0}, {&quot;title&quot;: &quot;Tailor Made Coffee Roasters&quot;, &quot;category&quot;: &quot;Coffee shop&quot;, &quot;address&quot;: &quot;Perikleous 37, Athina 105 63, Greece&quot;, &quot;website&quot;: &quot;https://instagram.com/tailormade_coffeeroasters?igshid=YmMyMTA2M2Y=&quot;, &quot;phone&quot;: &quot;+30 21 0322 7107&quot;, &quot;price&quot;: &quot;€1–5&quot;, &quot;rating&quot;: 4.6, &quot;reviews&quot;: 833, &quot;lat&quot;: 37.97669, &quot;lon&quot;: 23.729588, &quot;link&quot;: &quot;https://www.google.com/maps/place/Tailor+Made+Coffee+Roasters/data=!4m7!3m6!1s0x14a1bd0ea7cfdacd:0x1760d48a5b637f7a!8m2!3d37.9766898!4d23.7295879!16s%2Fg%2F11kc0h9hh3!19sChIJzdrPpw69oRQRen9jW4rUYBc?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 133.0}, {&quot;title&quot;: &quot;Cafe Bar 67&quot;, &quot;category&quot;: &quot;Cafe&quot;, &quot;address&quot;: &quot;Emmanouil Benaki 67, Athina 106 81, Greece&quot;, &quot;website&quot;: &quot;https://www.facebook.com/cafebar67.exarhia&quot;, &quot;phone&quot;: &quot;+30 21 0380 1771&quot;, &quot;price&quot;: &quot;€5–10&quot;, &quot;rating&quot;: 4.7, &quot;reviews&quot;: 853, &quot;lat&quot;: 37.985831, &quot;lon&quot;: 23.735147, &quot;link&quot;: &quot;https://www.google.com/maps/place/Cafe+Bar+67/data=!4m7!3m6!1s0x14a1bd36ead92be7:0x21ab230698f35024!8m2!3d37.9858309!4d23.735147!16s%2Fg%2F11cllry75g!19sChIJ5yvZ6ja9oRQRJFDzmAYjqyE?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 135.0}, {&quot;title&quot;: &quot;ELLYZ Cafe Athens&quot;, &quot;category&quot;: &quot;Cafe&quot;, &quot;address&quot;: &quot;Αγίου Φιλίππου 11, Athina 105 55, Greece&quot;, &quot;website&quot;: &quot;https://ellyz.gr/&quot;, &quot;phone&quot;: &quot;+30 21 1418 3816&quot;, &quot;price&quot;: &quot;€5–10&quot;, &quot;rating&quot;: 4.3, &quot;reviews&quot;: 5041, &quot;lat&quot;: 37.976556, &quot;lon&quot;: 23.723301, &quot;link&quot;: &quot;https://www.google.com/maps/place/ELLYZ+Cafe+Athens/data=!4m7!3m6!1s0x14a1bd253f1c907b:0x52f1ae408d4ae376!8m2!3d37.9765564!4d23.7233014!16s%2Fg%2F11fn92fs9w!19sChIJe5AcPyW9oRQRduNKjUCu8VI?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 127.0}, {&quot;title&quot;: &quot;Minu&quot;, &quot;category&quot;: &quot;Coffee shop&quot;, &quot;address&quot;: &quot;Sarri 50, Athina 105 53, Greece&quot;, &quot;website&quot;: &quot;http://www.minu-athens.com/&quot;, &quot;phone&quot;: &quot;+30 21 0323 2022&quot;, &quot;price&quot;: &quot;€5–15&quot;, &quot;rating&quot;: 4.4, &quot;reviews&quot;: 2189, &quot;lat&quot;: 37.978171, &quot;lon&quot;: 23.721282, &quot;link&quot;: &quot;https://www.google.com/maps/place/Minu/data=!4m7!3m6!1s0x14a1bd7c7521001f:0xcca81132306877a!8m2!3d37.9781708!4d23.7212823!16s%2Fg%2F11j24nfhh0!19sChIJHwAhdXy9oRQReocGIxOBygw?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 129.0}, {&quot;title&quot;: &quot;MOTIV&quot;, &quot;category&quot;: &quot;Cafe&quot;, &quot;address&quot;: &quot;Emmanouil Benaki 20, Athina 106 78, Greece&quot;, &quot;website&quot;: &quot;http://www.motiv.gr/&quot;, &quot;phone&quot;: &quot;+30 21 0381 0899&quot;, &quot;price&quot;: &quot;€1–5&quot;, &quot;rating&quot;: 4.7, &quot;reviews&quot;: 439, &quot;lat&quot;: 37.983553, &quot;lon&quot;: 23.731209, &quot;link&quot;: &quot;https://www.google.com/maps/place/MOTIV/data=!4m7!3m6!1s0x14a1bd30853fe373:0x5a8eabd0c6584239!8m2!3d37.9835526!4d23.7312089!16s%2Fg%2F11c2q35mrb!19sChIJc-M_hTC9oRQROUJYxtCrjlo?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 131.7}, {&quot;title&quot;: &quot;Telaro&quot;, &quot;category&quot;: &quot;Coffee shop&quot;, &quot;address&quot;: &quot;Favierou 60, Athina 104 38, Greece&quot;, &quot;website&quot;: &quot;http://www.facebook.com/telarocoffeecanteen&quot;, &quot;phone&quot;: &quot;+30 21 6001 1030&quot;, &quot;price&quot;: &quot;€5–10&quot;, &quot;rating&quot;: 4.5, &quot;reviews&quot;: 876, &quot;lat&quot;: 37.987383, &quot;lon&quot;: 23.720864, &quot;link&quot;: &quot;https://www.google.com/maps/place/Telaro/data=!4m7!3m6!1s0x14a1bd3ccaa0b0c7:0xa58b521704962b5f!8m2!3d37.987383!4d23.7208643!16s%2Fg%2F11c0qgqyvp!19sChIJx7Cgyjy9oRQRXyuWBBdSi6U?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 131.0}, {&quot;title&quot;: &quot;The Brunch Factory&quot;, &quot;category&quot;: &quot;Restaurant&quot;, &quot;address&quot;: &quot;Athinas 11, Athina 105 54, Greece&quot;, &quot;website&quot;: &quot;https://brunchathens.gr/&quot;, &quot;phone&quot;: &quot;+30 21 0321 8636&quot;, &quot;price&quot;: &quot;€10–15&quot;, &quot;rating&quot;: 4.4, &quot;reviews&quot;: 2138, &quot;lat&quot;: 37.977341, &quot;lon&quot;: 23.726205, &quot;link&quot;: &quot;https://www.google.com/maps/place/The+Brunch+Factory/data=!4m7!3m6!1s0x14a1bdbf2b196df3:0x1e08ce60c30f2474!8m2!3d37.9773411!4d23.7262049!16s%2Fg%2F11fmgb6tly!19sChIJ820ZK7-9oRQRdCQPw2DOCB4?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 129.0}, {&quot;title&quot;: &quot;Saorsa Athens&quot;, &quot;category&quot;: &quot;Coffee shop&quot;, &quot;address&quot;: &quot;Giatrakou 2, Athina 104 36, Greece&quot;, &quot;website&quot;: &quot;https://saorsa.gr/&quot;, &quot;phone&quot;: &quot;+30 21 0523 5960&quot;, &quot;price&quot;: &quot;€5–10&quot;, &quot;rating&quot;: 4.5, &quot;reviews&quot;: 1210, &quot;lat&quot;: 37.982708, &quot;lon&quot;: 23.720218, &quot;link&quot;: &quot;https://www.google.com/maps/place/Saorsa+Athens/data=!4m7!3m6!1s0x14a1bd268af96c25:0x1d98eac8343eed8!8m2!3d37.9827083!4d23.7202177!16s%2Fg%2F11d_vrxsmv!19sChIJJWz5iia9oRQR2O5Dg6yO2QE?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 131.0}, {&quot;title&quot;: &quot;Goodhood Athens&quot;, &quot;category&quot;: &quot;Coffee shop&quot;, &quot;address&quot;: &quot;Geor. Papandreou 33, Zografou 157 73, Greece&quot;, &quot;website&quot;: &quot;http://www.goodhood.gr/&quot;, &quot;phone&quot;: &quot;+30 21 1210 9000&quot;, &quot;price&quot;: &quot;€5–10&quot;, &quot;rating&quot;: 4.8, &quot;reviews&quot;: 361, &quot;lat&quot;: 37.980387, &quot;lon&quot;: 23.764694, &quot;link&quot;: &quot;https://www.google.com/maps/place/Goodhood+Athens/data=!4m7!3m6!1s0x14a19720e093732d:0x2b9f6511d802c9db!8m2!3d37.9803874!4d23.764694!16s%2Fg%2F11v5v7m4g0!19sChIJLXOT4CCXoRQR28kC2BFlnys?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 132.7}, {&quot;title&quot;: &quot;KAYA&quot;, &quot;category&quot;: &quot;Coffee store&quot;, &quot;address&quot;: &quot;Voulis 7, Athina 105 62, Greece&quot;, &quot;website&quot;: &quot;https://www.facebook.com/Kaya-spirit-547122468662711/&quot;, &quot;phone&quot;: &quot;+30 21 3028 4305&quot;, &quot;price&quot;: &quot;€1–5&quot;, &quot;rating&quot;: 4.9, &quot;reviews&quot;: 541, &quot;lat&quot;: 37.976874, &quot;lon&quot;: 23.733354, &quot;link&quot;: &quot;https://www.google.com/maps/place/KAYA/data=!4m7!3m6!1s0x14a1bd3c1cf527e7:0x5668ed3640d64e76!8m2!3d37.976874!4d23.7333545!16s%2Fg%2F11bc8bpnfw!19sChIJ5yf1HDy9oRQRdk7WQDbtaFY?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 136.8}, {&quot;title&quot;: &quot;Snobby Café Athens&quot;, &quot;category&quot;: &quot;Coffee shop&quot;, &quot;address&quot;: &quot;Kodrigktonos 14, Athina 112 57, Greece&quot;, &quot;website&quot;: &quot;&quot;, &quot;phone&quot;: &quot;+30 21 0883 4333&quot;, &quot;price&quot;: &quot;€1–5&quot;, &quot;rating&quot;: 4.6, &quot;reviews&quot;: 38, &quot;lat&quot;: 37.995667, &quot;lon&quot;: 23.732943, &quot;link&quot;: &quot;https://www.google.com/maps/place/Snobby+Caf%C3%A9+Athens/data=!4m7!3m6!1s0x14a1a3a5ae3b65cf:0x7a08d98b926ef91d!8m2!3d37.9956667!4d23.7329432!16s%2Fg%2F11y0mp33vm!19sChIJz2U7rqWjoRQRHflukovZCHo?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 113.0}, {&quot;title&quot;: &quot;Bite Box&quot;, &quot;category&quot;: &quot;Breakfast restaurant&quot;, &quot;address&quot;: &quot;Veikou 84, Athina 117 41, Greece&quot;, &quot;website&quot;: &quot;&quot;, &quot;phone&quot;: &quot;+30 21 0923 7817&quot;, &quot;price&quot;: &quot;€10–15&quot;, &quot;rating&quot;: 4.8, &quot;reviews&quot;: 674, &quot;lat&quot;: 37.963683, &quot;lon&quot;: 23.7216, &quot;link&quot;: &quot;https://www.google.com/maps/place/Bite+Box/data=!4m7!3m6!1s0x14a1bd036025b411:0xc6a9442b1c56e79c!8m2!3d37.9636833!4d23.7215999!16s%2Fg%2F11f5_6gwbq!19sChIJEbQlYAO9oRQRnOdWHCtEqcY?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 131.9}, {&quot;title&quot;: &quot;Κekkos Traditional Cafe &amp; Pastry&quot;, &quot;category&quot;: &quot;Cafe&quot;, &quot;address&quot;: &quot;Eratosthenous 7, Athina 116 35, Greece&quot;, &quot;website&quot;: &quot;https://kekkos-athens-web.lovable.app/&quot;, &quot;phone&quot;: &quot;+30 21 0751 1229&quot;, &quot;price&quot;: &quot;€5–10&quot;, &quot;rating&quot;: 4.8, &quot;reviews&quot;: 436, &quot;lat&quot;: 37.970385, &quot;lon&quot;: 23.742034, &quot;link&quot;: &quot;https://www.google.com/maps/place/%CE%9Aekkos+Traditional+Cafe+%26+Pastry/data=!4m7!3m6!1s0x14a1bd6a85d3eb15:0xab66b4c483c035b5!8m2!3d37.9703845!4d23.7420344!16s%2Fg%2F11bvt51kzk!19sChIJFevThWq9oRQRtTXAg8S0Zqs?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 133.7}, {&quot;title&quot;: &quot;Cherry Blossom Athens&quot;, &quot;category&quot;: &quot;Coffee shop&quot;, &quot;address&quot;: &quot;Ippokratous 6, Athina 106 79, Greece&quot;, &quot;website&quot;: &quot;&quot;, &quot;phone&quot;: &quot;+30 21 0814 5269&quot;, &quot;price&quot;: &quot;€1–5&quot;, &quot;rating&quot;: 4.6, &quot;reviews&quot;: 72, &quot;lat&quot;: 37.982124, &quot;lon&quot;: 23.734532, &quot;link&quot;: &quot;https://www.google.com/maps/place/Cherry+Blossom+Athens/data=!4m7!3m6!1s0x14a1bdfc614612ff:0x7f463041c2496af9!8m2!3d37.982124!4d23.7345316!16s%2Fg%2F11l2n_v2yh!19sChIJ_xJGYfy9oRQR-WpJwkEwRn8?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 116.3}, {&quot;title&quot;: &quot;Handwich Athens&quot;, &quot;category&quot;: &quot;Vegan restaurant&quot;, &quot;address&quot;: &quot;Tzortz 3, Athina 106 82, Greece&quot;, &quot;website&quot;: &quot;&quot;, &quot;phone&quot;: &quot;+30 21 0380 6193&quot;, &quot;price&quot;: &quot;€5–10&quot;, &quot;rating&quot;: 4.8, &quot;reviews&quot;: 254, &quot;lat&quot;: 37.986375, &quot;lon&quot;: 23.731697, &quot;link&quot;: &quot;https://www.google.com/maps/place/Handwich+Athens/data=!4m7!3m6!1s0x14a1bdf9e7978725:0x7974ee29ba7a8b64!8m2!3d37.9863753!4d23.7316971!16s%2Fg%2F11vk8kqt07!19sChIJJYeX5_m9oRQRZIt6uinudHk?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 126.9}, {&quot;title&quot;: &quot;Cafe Avissinia&quot;, &quot;category&quot;: &quot;Restaurant&quot;, &quot;address&quot;: &quot;Kinetou 7, Athina 105 55, Greece&quot;, &quot;website&quot;: &quot;https://cafeavissinia.net/&quot;, &quot;phone&quot;: &quot;+30 21 0321 7047&quot;, &quot;price&quot;: &quot;€15–35&quot;, &quot;rating&quot;: 4.5, &quot;reviews&quot;: 1990, &quot;lat&quot;: 37.976618, &quot;lon&quot;: 23.72366, &quot;link&quot;: &quot;https://www.google.com/maps/place/Cafe+Avissinia/data=!4m7!3m6!1s0x14a1bd22502de84f:0x463fb3378f060ca9!8m2!3d37.9766177!4d23.72366!16s%2Fg%2F1tjz0p2b!19sChIJT-gtUCK9oRQRqQwGjzezP0Y?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 131.0}, {&quot;title&quot;: &quot;To Kafeneio&quot;, &quot;category&quot;: &quot;Greek restaurant&quot;, &quot;address&quot;: &quot;Epicharmou 1, Athina 105 58, Greece&quot;, &quot;website&quot;: &quot;https://tokafeneio.gr/&quot;, &quot;phone&quot;: &quot;+30 21 0324 6916&quot;, &quot;price&quot;: &quot;€15–25&quot;, &quot;rating&quot;: 4.5, &quot;reviews&quot;: 4057, &quot;lat&quot;: 37.972551, &quot;lon&quot;: 23.729567, &quot;link&quot;: &quot;https://www.google.com/maps/place/To+Kafeneio/data=!4m7!3m6!1s0x14a1bd17c4e8a475:0xf8c85b854f127088!8m2!3d37.9725507!4d23.7295668!16s%2Fg%2F1tf1l3sw!19sChIJdaToxBe9oRQRiHAST4VbyPg?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 131.0}, {&quot;title&quot;: &quot;λostre - Oλ Nτέι Bar&quot;, &quot;category&quot;: &quot;Cafe&quot;, &quot;address&quot;: &quot;Theodoritou Vresthenis 1, Athina 117 43, Greece&quot;, &quot;website&quot;: &quot;&quot;, &quot;phone&quot;: &quot;+30 21 0923 4227&quot;, &quot;price&quot;: &quot;€5–10&quot;, &quot;rating&quot;: 4.5, &quot;reviews&quot;: 802, &quot;lat&quot;: 37.964025, &quot;lon&quot;: 23.731209, &quot;link&quot;: &quot;https://www.google.com/maps/place/%CE%BBostre+-+O%CE%BB+N%CF%84%CE%AD%CE%B9+Bar/data=!4m7!3m6!1s0x14a1bd11cdb079ef:0x3530829a9a1ceeec!8m2!3d37.9640247!4d23.7312093!16s%2Fg%2F1hf08lttl!19sChIJ73mwzRG9oRQR7O4cmpqCMDU?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 126.9}, {&quot;title&quot;: &quot;Rooster&quot;, &quot;category&quot;: &quot;Bar&quot;, &quot;address&quot;: &quot;Pl. Agias Irinis 4, Athina 105 60, Greece&quot;, &quot;website&quot;: &quot;http://www.roostercafe.gr/&quot;, &quot;phone&quot;: &quot;+30 21 0322 4410&quot;, &quot;price&quot;: &quot;€5–15&quot;, &quot;rating&quot;: 4.2, &quot;reviews&quot;: 2937, &quot;lat&quot;: 37.977216, &quot;lon&quot;: 23.728382, &quot;link&quot;: &quot;https://www.google.com/maps/place/Rooster/data=!4m7!3m6!1s0x14a1bd3cc62df715:0xddadfd238b596819!8m2!3d37.9772157!4d23.7283819!16s%2Fg%2F11g_t9b43!19sChIJFfctxjy9oRQRGWhZiyP9rd0?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 125.0}, {&quot;title&quot;: &quot;Chess Cafe Panellinion&quot;, &quot;category&quot;: &quot;Cafe&quot;, &quot;address&quot;: &quot;Mavromichali 16, Athina 106 80, Greece&quot;, &quot;website&quot;: &quot;https://www.facebook.com/kafeneionpanellinion&quot;, &quot;phone&quot;: &quot;+30 21 0363 4492&quot;, &quot;price&quot;: &quot;€1–5&quot;, &quot;rating&quot;: 4.6, &quot;reviews&quot;: 193, &quot;lat&quot;: 37.983067, &quot;lon&quot;: 23.73495, &quot;link&quot;: &quot;https://www.google.com/maps/place/Chess+Cafe+Panellinion/data=!4m7!3m6!1s0x14a1bd37420f2a3d:0x3ba4fc770f053eaf!8m2!3d37.9830673!4d23.7349504!16s%2Fg%2F11c1ty5sh4!19sChIJPSoPQje9oRQRrz4FD3f8pDs?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 125.4}, {&quot;title&quot;: &quot;G cafe bar&quot;, &quot;category&quot;: &quot;Bar&quot;, &quot;address&quot;: &quot;Voukourestiou 39, Athina 106 73, Greece&quot;, &quot;website&quot;: &quot;http://gcafebar.gr/&quot;, &quot;phone&quot;: &quot;+30 21 0362 9086&quot;, &quot;price&quot;: &quot;€10–30&quot;, &quot;rating&quot;: 4.7, &quot;reviews&quot;: 468, &quot;lat&quot;: 37.979331, &quot;lon&quot;: 23.739516, &quot;link&quot;: &quot;https://www.google.com/maps/place/G+cafe+bar/data=!4m7!3m6!1s0x14a1bd4787f6ae03:0xcc647640bb8539e!8m2!3d37.9793313!4d23.7395158!16s%2Fg%2F11g01v5sdw!19sChIJA672h0e9oRQRnlO4C2RHxgw?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 132.0}, {&quot;title&quot;: &quot;A Little Taste of Home Restaurant&quot;, &quot;category&quot;: &quot;Restaurant&quot;, &quot;address&quot;: &quot;Astiggos 8, Athina 105 55, Greece&quot;, &quot;website&quot;: &quot;https://alittletasteofhome.gr/&quot;, &quot;phone&quot;: &quot;+30 21 1001 1511&quot;, &quot;price&quot;: &quot;€20–40&quot;, &quot;rating&quot;: 4.8, &quot;reviews&quot;: 2680, &quot;lat&quot;: 37.976763, &quot;lon&quot;: 23.722968, &quot;link&quot;: &quot;https://www.google.com/maps/place/A+Little+Taste+of+Home+Restaurant/data=!4m7!3m6!1s0x14a1bd420aec479b:0x76477085b720f36f!8m2!3d37.9767628!4d23.7229679!16s%2Fg%2F11f8fhsb6g!19sChIJm0fsCkK9oRQRb_Mgt4VwR3Y?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 137.0}, {&quot;title&quot;: &quot;Sepia Art Café-Bar&quot;, &quot;category&quot;: &quot;Bar&quot;, &quot;address&quot;: &quot;Koletti 25, Athina 106 77, Greece&quot;, &quot;website&quot;: &quot;&quot;, &quot;phone&quot;: &quot;+30 21 3009 7385&quot;, &quot;price&quot;: &quot;€1–5&quot;, &quot;rating&quot;: 4.6, &quot;reviews&quot;: 486, &quot;lat&quot;: 37.98572, &quot;lon&quot;: 23.733032, &quot;link&quot;: &quot;https://www.google.com/maps/place/Sepia+Art+Caf%C3%A9-Bar/data=!4m7!3m6!1s0x14a1bd312e2a9a53:0x6a6a6b91903ec1d1!8m2!3d37.9857201!4d23.7330323!16s%2Fg%2F11cn95vj5r!19sChIJU5oqLjG9oRQR0cE-kJFramo?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 126.2}, {&quot;title&quot;: &quot;iFeel&quot;, &quot;category&quot;: &quot;Brunch restaurant&quot;, &quot;address&quot;: &quot;Karaiskaki 33, Athina 105 54, Greece&quot;, &quot;website&quot;: &quot;http://www.ifeelathens.com/&quot;, &quot;phone&quot;: &quot;+30 21 0323 2244&quot;, &quot;price&quot;: &quot;$$&quot;, &quot;rating&quot;: 4.4, &quot;reviews&quot;: 1853, &quot;lat&quot;: 37.978259, &quot;lon&quot;: 23.724659, &quot;link&quot;: &quot;https://www.google.com/maps/place/iFeel/data=!4m7!3m6!1s0x14a1bd239fb46209:0x1d2aaeb1384840c!8m2!3d37.9782591!4d23.7246591!16s%2Fg%2F11c2kl268s!19sChIJCWK0nyO9oRQRDISEE-uq0gE?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 129.0}, {&quot;title&quot;: &quot;Svoura&quot;, &quot;category&quot;: &quot;Mediterranean restaurant&quot;, &quot;address&quot;: &quot;Drakou 8, Athina 117 42, Greece&quot;, &quot;website&quot;: &quot;https://www.facebook.com/%CE%A3%CE%B2%CE%BF%CF%8D%CF%81%CE%B1-216119748400628/?ref=bookmarks&quot;, &quot;phone&quot;: &quot;+30 21 0922 0919&quot;, &quot;price&quot;: &quot;€15–25&quot;, &quot;rating&quot;: 4.5, &quot;reviews&quot;: 1890, &quot;lat&quot;: 37.965273, &quot;lon&quot;: 23.72637, &quot;link&quot;: &quot;https://www.google.com/maps/place/Svoura/data=!4m7!3m6!1s0x14a1bd1a958b5f3b:0x2c59fd222f9e50d0!8m2!3d37.9652733!4d23.72637!16s%2Fg%2F11b6lkcdnz!19sChIJO1-LlRq9oRQR0FCeLyL9WSw?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 131.0}, {&quot;title&quot;: &quot;Kalos Oionos Cafe&quot;, &quot;category&quot;: &quot;Cafe&quot;, &quot;address&quot;: &quot;Falirou 3, Athina 117 42, Greece&quot;, &quot;website&quot;: &quot;&quot;, &quot;phone&quot;: &quot;+30 697 322 7689&quot;, &quot;price&quot;: &quot;€1–20&quot;, &quot;rating&quot;: 4.6, &quot;reviews&quot;: 105, &quot;lat&quot;: 37.967369, &quot;lon&quot;: 23.729132, &quot;link&quot;: &quot;https://www.google.com/maps/place/Kalos+Oionos+Cafe/data=!4m7!3m6!1s0x14a1bd10c08ecec9:0x5fedf0010c0d7141!8m2!3d37.9673687!4d23.7291317!16s%2Fg%2F11fx9mxwxh!19sChIJyc6OwBC9oRQRQXENDAHw7V8?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 118.3}, {&quot;title&quot;: &quot;Vryssaki (artFix Athens)&quot;, &quot;category&quot;: &quot;Art cafe&quot;, &quot;address&quot;: &quot;Vrisakiou 17, Athina 105 55, Greece&quot;, &quot;website&quot;: &quot;http://www.vryssaki.gr/&quot;, &quot;phone&quot;: &quot;+30 21 0321 0179&quot;, &quot;price&quot;: &quot;€5–10&quot;, &quot;rating&quot;: 4.5, &quot;reviews&quot;: 2961, &quot;lat&quot;: 37.97478, &quot;lon&quot;: 23.724523, &quot;link&quot;: &quot;https://www.google.com/maps/place/Vryssaki+%28artFix+Athens%29/data=!4m7!3m6!1s0x14a1bd227e448167:0x7fd3e559290d022!8m2!3d37.9747801!4d23.724523!16s%2Fg%2F12hr3ng11!19sChIJZ4FEfiK9oRQRItCQklU-_Qc?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 131.0}, {&quot;title&quot;: &quot;Filion Cafe&quot;, &quot;category&quot;: &quot;Cafe&quot;, &quot;address&quot;: &quot;Skoufa 34, Athina 106 72, Greece&quot;, &quot;website&quot;: &quot;https://www.filioncafe.com/&quot;, &quot;phone&quot;: &quot;+30 21 0361 2850&quot;, &quot;price&quot;: &quot;€5–10&quot;, &quot;rating&quot;: 4.4, &quot;reviews&quot;: 1654, &quot;lat&quot;: 37.980016, &quot;lon&quot;: 23.738451, &quot;link&quot;: &quot;https://www.google.com/maps/place/Filion+Cafe/data=!4m7!3m6!1s0x14a1bd386b5b6e4f:0x1d4e8bd375219e0!8m2!3d37.9800158!4d23.7384514!16s%2Fg%2F1tjwkyrw!19sChIJT25bazi9oRQR4BlSN73o1AE?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 129.0}, {&quot;title&quot;: &quot;The Underdog® Flagship Store Thissio&quot;, &quot;category&quot;: &quot;Coffee shop&quot;, &quot;address&quot;: &quot;Iraklidon 8, Athina 118 51, Greece&quot;, &quot;website&quot;: &quot;http://www.underdog.gr/&quot;, &quot;phone&quot;: &quot;+30 21 3036 5393&quot;, &quot;price&quot;: &quot;€10–15&quot;, &quot;rating&quot;: 4.2, &quot;reviews&quot;: 4039, &quot;lat&quot;: 37.974959, &quot;lon&quot;: 23.719137, &quot;link&quot;: &quot;https://www.google.com/maps/place/The+Underdog%C2%AE+Flagship+Store+Thissio/data=!4m7!3m6!1s0x14a1bd1f7a75faad:0xe820cd3827f38764!8m2!3d37.974959!4d23.7191374!16s%2Fg%2F11b6zp_yqh!19sChIJrfp1eh-9oRQRZIfzJzjNIOg?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 125.0}, {&quot;title&quot;: &quot;Lacandona the Bar&quot;, &quot;category&quot;: &quot;Bar&quot;, &quot;address&quot;: &quot;Ipitou 4, Athina 105 57, Greece&quot;, &quot;website&quot;: &quot;&quot;, &quot;phone&quot;: &quot;+30 21 1012 5653&quot;, &quot;price&quot;: &quot;€1–5&quot;, &quot;rating&quot;: 4.8, &quot;reviews&quot;: 235, &quot;lat&quot;: 37.974326, &quot;lon&quot;: 23.731588, &quot;link&quot;: &quot;https://www.google.com/maps/place/Lacandona+the+Bar/data=!4m7!3m6!1s0x14a1bd3dbe7cdcf3:0x93967d2e606cc303!8m2!3d37.9743262!4d23.7315882!16s%2Fg%2F11bxc621q1!19sChIJ89x8vj29oRQRA8NsYC59lpM?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 126.5}, {&quot;title&quot;: &quot;Kalimeres&quot;, &quot;category&quot;: &quot;Bistro&quot;, &quot;address&quot;: &quot;Taki 14, Athina 105 54, Greece&quot;, &quot;website&quot;: &quot;http://www.kalimeres.gr/&quot;, &quot;phone&quot;: &quot;+30 21 1412 9537&quot;, &quot;price&quot;: &quot;€10–15&quot;, &quot;rating&quot;: 4.6, &quot;reviews&quot;: 2437, &quot;lat&quot;: 37.978469, &quot;lon&quot;: 23.723897, &quot;link&quot;: &quot;https://www.google.com/maps/place/Kalimeres/data=!4m7!3m6!1s0x14a1bd6dc4fed1d5:0xa2a9a3c1841d211c!8m2!3d37.9784687!4d23.7238975!16s%2Fg%2F11ghsbsyfz!19sChIJ1dH-xG29oRQRHCEdhMGjqaI?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 133.0}, {&quot;title&quot;: &quot;Crystal Lotus Play Cafe&quot;, &quot;category&quot;: &quot;Cafe&quot;, &quot;address&quot;: &quot;Skouze 3, Athina 105 60, Greece&quot;, &quot;website&quot;: &quot;https://crystallotus.eu/&quot;, &quot;phone&quot;: &quot;+30 21 0220 5731&quot;, &quot;price&quot;: &quot;€5–10&quot;, &quot;rating&quot;: 4.7, &quot;reviews&quot;: 671, &quot;lat&quot;: 37.977393, &quot;lon&quot;: 23.728674, &quot;link&quot;: &quot;https://www.google.com/maps/place/Crystal+Lotus+Play+Cafe/data=!4m7!3m6!1s0x14a1bdd864478d79:0xaadb1fb5aa4b7f5d!8m2!3d37.9773932!4d23.7286742!16s%2Fg%2F11tcbn44gh!19sChIJeY1HZNi9oRQRXX9LqrUf26o?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 133.9}, {&quot;title&quot;: &quot;Café στον κήπο του Νομισματικού Μουσείου&quot;, &quot;category&quot;: &quot;Brunch restaurant&quot;, &quot;address&quot;: &quot;Panepistimiou 12, Athina 106 71, Greece&quot;, &quot;website&quot;: &quot;&quot;, &quot;phone&quot;: &quot;+30 694 294 1299&quot;, &quot;price&quot;: &quot;€5–10&quot;, &quot;rating&quot;: 4.5, &quot;reviews&quot;: 1712, &quot;lat&quot;: 37.97806, &quot;lon&quot;: 23.735594, &quot;link&quot;: &quot;https://www.google.com/maps/place/Caf%C3%A9+%CF%83%CF%84%CE%BF%CE%BD+%CE%BA%CE%AE%CF%80%CE%BF+%CF%84%CE%BF%CF%85+%CE%9D%CE%BF%CE%BC%CE%B9%CF%83%CE%BC%CE%B1%CF%84%CE%B9%CE%BA%CE%BF%CF%8D+%CE%9C%CE%BF%CF%85%CF%83%CE%B5%CE%AF%CE%BF%CF%85/data=!4m7!3m6!1s0x14a1bd393c7ad4fb:0x7e82492be88fa664!8m2!3d37.9780601!4d23.7355938!16s%2Fg%2F11bx55pvdm!19sChIJ-9R6PDm9oRQRZKaP6CtJgn4?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 127.0}, {&quot;title&quot;: &quot;CENTRALE ATHENS&quot;, &quot;category&quot;: &quot;Bistro&quot;, &quot;address&quot;: &quot;2 Evaggelistrias and, Mitropoleos str, Athina 105 63, Greece&quot;, &quot;website&quot;: &quot;https://www.facebook.com/centraleathens&quot;, &quot;phone&quot;: &quot;&quot;, &quot;price&quot;: &quot;€5–20&quot;, &quot;rating&quot;: 4.2, &quot;reviews&quot;: 2315, &quot;lat&quot;: 37.975628, &quot;lon&quot;: 23.729993, &quot;link&quot;: &quot;https://www.google.com/maps/place/CENTRALE+ATHENS/data=!4m7!3m6!1s0x14a1bd3d02eec897:0x6d78e8938ba39d89!8m2!3d37.9756281!4d23.7299931!16s%2Fg%2F1hjgmbl4f!19sChIJl8juAj29oRQRiZ2ji5PoeG0?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 123.0}, {&quot;title&quot;: &quot;Cusco Cafe&quot;, &quot;category&quot;: &quot;Bar&quot;, &quot;address&quot;: &quot;Koletti 8, Athina 106 81, Greece&quot;, &quot;website&quot;: &quot;&quot;, &quot;phone&quot;: &quot;+30 21 1183 1432&quot;, &quot;price&quot;: &quot;€5–10&quot;, &quot;rating&quot;: 4.5, &quot;reviews&quot;: 1157, &quot;lat&quot;: 37.984621, &quot;lon&quot;: 23.734366, &quot;link&quot;: &quot;https://www.google.com/maps/place/Cusco+Cafe/data=!4m7!3m6!1s0x14a1bd37258cc0a1:0xc3f9b31f55c2dab!8m2!3d37.984621!4d23.734366!16s%2Fg%2F11cky74spt!19sChIJocCMJTe9oRQRqy1c9TGbPww?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 127.0}, {&quot;title&quot;: &quot;Cafe Plaka&quot;, &quot;category&quot;: &quot;Cafe&quot;, &quot;address&quot;: &quot;Tripodon 1, Athina 105 58, Greece&quot;, &quot;website&quot;: &quot;https://www.instagram.com/CAFE_PLAKA/&quot;, &quot;phone&quot;: &quot;+30 21 0322 0388&quot;, &quot;price&quot;: &quot;€5–10&quot;, &quot;rating&quot;: 4.2, &quot;reviews&quot;: 1952, &quot;lat&quot;: 37.97312, &quot;lon&quot;: 23.729088, &quot;link&quot;: &quot;https://www.google.com/maps/place/Cafe+Plaka/data=!4m7!3m6!1s0x14a1bd17ddf946f9:0x72220b3d515cce30!8m2!3d37.9731196!4d23.7290876!16s%2Fg%2F11b7q86_p9!19sChIJ-Ub53Re9oRQRMM5cUT0LInI?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 125.0}, {&quot;title&quot;: &quot;Clemente VIII Caffè&quot;, &quot;category&quot;: &quot;Coffee shop&quot;, &quot;address&quot;: &quot;Voukourestiou 3, Athina 105 41, Greece&quot;, &quot;website&quot;: &quot;https://clementeathens.gr/&quot;, &quot;phone&quot;: &quot;+30 21 0321 9340&quot;, &quot;price&quot;: &quot;€5–15&quot;, &quot;rating&quot;: 4.2, &quot;reviews&quot;: 975, &quot;lat&quot;: 37.976916, &quot;lon&quot;: 23.734778, &quot;link&quot;: &quot;https://www.google.com/maps/place/Clemente+VIII+Caff%C3%A8/data=!4m7!3m6!1s0x14a1bd3eb69c8e77:0xed2893829bab1e45!8m2!3d37.976916!4d23.734778!16s%2Fg%2F1q62grgv4!19sChIJd46ctj69oRQRRR6rm4KTKO0?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 125.0}, {&quot;title&quot;: &quot;Anana Coffee &amp; Food&quot;, &quot;category&quot;: &quot;Vegetarian cafe and deli&quot;, &quot;address&quot;: &quot;Praxitelous 33, Athina 105 60, Greece&quot;, &quot;website&quot;: &quot;https://anana.coffee/&quot;, &quot;phone&quot;: &quot;+30 21 1115 1788&quot;, &quot;price&quot;: &quot;€5–10&quot;, &quot;rating&quot;: 4.2, &quot;reviews&quot;: 1753, &quot;lat&quot;: 37.979075, &quot;lon&quot;: 23.72939, &quot;link&quot;: &quot;https://www.google.com/maps/place/Anana+Coffee+%26+Food/data=!4m7!3m6!1s0x14a1bd05f97d54fb:0x8a680758154716b8!8m2!3d37.979075!4d23.7293905!16s%2Fg%2F11h5_vh3vs!19sChIJ-1R9-QW9oRQRuBZHFVgHaIo?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 125.0}, {&quot;title&quot;: &quot;Hopper&#x27;s All Day Cafe Bar Restaurant&quot;, &quot;category&quot;: &quot;Restaurant&quot;, &quot;address&quot;: &quot;Αθηνάς 18, Vissis 22, Athina 105 51, Greece&quot;, &quot;website&quot;: &quot;&quot;, &quot;phone&quot;: &quot;+30 693 719 3332&quot;, &quot;price&quot;: &quot;€10–15&quot;, &quot;rating&quot;: 4.6, &quot;reviews&quot;: 411, &quot;lat&quot;: 37.978358, &quot;lon&quot;: 23.726729, &quot;link&quot;: &quot;https://www.google.com/maps/place/Hopper%27s+All+Day+Cafe+Bar+Restaurant/data=!4m7!3m6!1s0x14a1bd655c8137c5:0x43d367a731cd07e7!8m2!3d37.9783581!4d23.7267288!16s%2Fg%2F11fk4sjt9m!19sChIJxTeBXGW9oRQR5wfNMadn00M?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 125.4}, {&quot;title&quot;: &quot;City ZEN All Day Bar Restaurant&quot;, &quot;category&quot;: &quot;Cafe&quot;, &quot;address&quot;: &quot;Aiolou 11, Athina 105 55, Greece&quot;, &quot;website&quot;: &quot;https://www.cityzenathens.gr/&quot;, &quot;phone&quot;: &quot;+30 21 0325 4942&quot;, &quot;price&quot;: &quot;€10–35&quot;, &quot;rating&quot;: 4.2, &quot;reviews&quot;: 5254, &quot;lat&quot;: 37.976268, &quot;lon&quot;: 23.727442, &quot;link&quot;: &quot;https://www.google.com/maps/place/City+ZEN+All+Day+Bar+Restaurant/data=!4m7!3m6!1s0x14a1bd22d5d6642b:0xc437c550c5bdb50c!8m2!3d37.9762683!4d23.7274423!16s%2Fg%2F11b6_k2h8z!19sChIJK2TW1SK9oRQRDLW9xVDFN8Q?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 125.0}, {&quot;title&quot;: &quot;Cafe Antonis&quot;, &quot;category&quot;: &quot;Restaurant&quot;, &quot;address&quot;: &quot;Iperidou 3, Athina 105 58, Greece&quot;, &quot;website&quot;: &quot;&quot;, &quot;phone&quot;: &quot;+30 21 0331 8985&quot;, &quot;price&quot;: &quot;€10–15&quot;, &quot;rating&quot;: 4.5, &quot;reviews&quot;: 430, &quot;lat&quot;: 37.973493, &quot;lon&quot;: 23.73267, &quot;link&quot;: &quot;https://www.google.com/maps/place/Cafe+Antonis/data=!4m7!3m6!1s0x14a1bd3def0eae6b:0x2fe1a6bf3c07a5a0!8m2!3d37.9734928!4d23.7326698!16s%2Fg%2F11clyg_p8h!19sChIJa64O7z29oRQRoKUHPL-m4S8?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 123.6}, {&quot;title&quot;: &quot;Migniardise&quot;, &quot;category&quot;: &quot;Cafe&quot;, &quot;address&quot;: &quot;Veikou 30, Athina 117 42, Greece&quot;, &quot;website&quot;: &quot;https://www.migniardise.gr/&quot;, &quot;phone&quot;: &quot;+30 21 1750 2334&quot;, &quot;price&quot;: &quot;€5–10&quot;, &quot;rating&quot;: 4.9, &quot;reviews&quot;: 576, &quot;lat&quot;: 37.966562, &quot;lon&quot;: 23.726675, &quot;link&quot;: &quot;https://www.google.com/maps/place/Migniardise/data=!4m7!3m6!1s0x14a1bdff06e2ce47:0x501afaf82f64aff9!8m2!3d37.9665617!4d23.7266752!16s%2Fg%2F11plhln4gx!19sChIJR87iBv-9oRQR-a9kL_j6GlA?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 137.1}, {&quot;title&quot;: &quot;Philos Athens&quot;, &quot;category&quot;: &quot;Restaurant&quot;, &quot;address&quot;: &quot;106 73, Solonos 32, Athina 106 73, Greece&quot;, &quot;website&quot;: &quot;http://philosathens.com/&quot;, &quot;phone&quot;: &quot;+30 21 0361 9163&quot;, &quot;price&quot;: &quot;€15–20&quot;, &quot;rating&quot;: 4.4, &quot;reviews&quot;: 1074, &quot;lat&quot;: 37.979137, &quot;lon&quot;: 23.737889, &quot;link&quot;: &quot;https://www.google.com/maps/place/Philos+Athens/data=!4m7!3m6!1s0x14a1bd385f939ed1:0x9719285ccf0c9854!8m2!3d37.9791369!4d23.7378889!16s%2Fg%2F11b7dqhtnv!19sChIJ0Z6TXzi9oRQRVJgMz1woGZc?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 129.0}, {&quot;title&quot;: &quot;KICK&quot;, &quot;category&quot;: &quot;Coffee shop&quot;, &quot;address&quot;: &quot;Sporadon 26, Athina 113 61, Greece&quot;, &quot;website&quot;: &quot;&quot;, &quot;phone&quot;: &quot;+30 21 1119 0369&quot;, &quot;price&quot;: &quot;€5–10&quot;, &quot;rating&quot;: 4.6, &quot;reviews&quot;: 1201, &quot;lat&quot;: 37.999153, &quot;lon&quot;: 23.737464, &quot;link&quot;: &quot;https://www.google.com/maps/place/KICK/data=!4m7!3m6!1s0x14a1a3ea234c9c6f:0xdd6ce889e1885ff0!8m2!3d37.9991527!4d23.7374636!16s%2Fg%2F11jl2v16l_!19sChIJb5xMI-qjoRQR8F-I4YnobN0?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 129.0}, {&quot;title&quot;: &quot;kolor.&quot;, &quot;category&quot;: &quot;Cafe&quot;, &quot;address&quot;: &quot;Emmanouil Benaki 7-9, Athina 106 78, Greece&quot;, &quot;website&quot;: &quot;&quot;, &quot;phone&quot;: &quot;+30 21 0381 0017&quot;, &quot;price&quot;: &quot;€1–5&quot;, &quot;rating&quot;: 4.8, &quot;reviews&quot;: 232, &quot;lat&quot;: 37.983508, &quot;lon&quot;: 23.730831, &quot;link&quot;: &quot;https://www.google.com/maps/place/kolor./data=!4m7!3m6!1s0x14a1bd0cc34efc73:0xfcf7fe1cad800555!8m2!3d37.9835085!4d23.7308313!16s%2Fg%2F11fhkzx1ky!19sChIJc_xOwwy9oRQRVQWArRz-9_w?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 126.4}, {&quot;title&quot;: &quot;Louis Cafe&quot;, &quot;category&quot;: &quot;Restaurant&quot;, &quot;address&quot;: &quot;Leonidou 87, Athina 104 35, Greece&quot;, &quot;website&quot;: &quot;&quot;, &quot;phone&quot;: &quot;+30 21 0347 6926&quot;, &quot;price&quot;: &quot;€10–15&quot;, &quot;rating&quot;: 4.6, &quot;reviews&quot;: 2239, &quot;lat&quot;: 37.980802, &quot;lon&quot;: 23.715328, &quot;link&quot;: &quot;https://www.google.com/maps/place/Louis+Cafe/data=!4m7!3m6!1s0x14a1bcdf5752119d:0x5aca8f6b723be228!8m2!3d37.9808016!4d23.7153281!16s%2Fg%2F11b5wk6j_v!19sChIJnRFSV9-8oRQRKOI7cmuPylo?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 129.0}, {&quot;title&quot;: &quot;CAFE CAFE ATHENS&quot;, &quot;category&quot;: &quot;Coffee shop&quot;, &quot;address&quot;: &quot;Tralleon 59, Athina 111 42, Greece&quot;, &quot;website&quot;: &quot;http://www.cafe-cafe.gr/&quot;, &quot;phone&quot;: &quot;+30 21 0213 0255&quot;, &quot;price&quot;: &quot;€1–5&quot;, &quot;rating&quot;: 4.4, &quot;reviews&quot;: 729, &quot;lat&quot;: 38.022671, &quot;lon&quot;: 23.746969, &quot;link&quot;: &quot;https://www.google.com/maps/place/CAFE+CAFE+ATHENS/data=!4m7!3m6!1s0x14a1a28ef2e948e5:0x5e9d006078fea00e!8m2!3d38.0226708!4d23.7469694!16s%2Fg%2F11cfhghbx!19sChIJ5Ujp8o6ioRQRDqD-eGAAnV4?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 128.4}, {&quot;title&quot;: &quot;Klepsydra&quot;, &quot;category&quot;: &quot;Greek restaurant&quot;, &quot;address&quot;: &quot;Klepsidras, Athina 105 56, Greece&quot;, &quot;website&quot;: &quot;https://m.facebook.com/klepsidracafe/&quot;, &quot;phone&quot;: &quot;+30 21 0321 2493&quot;, &quot;price&quot;: &quot;€10–20&quot;, &quot;rating&quot;: 4.4, &quot;reviews&quot;: 4331, &quot;lat&quot;: 37.973465, &quot;lon&quot;: 23.726614, &quot;link&quot;: &quot;https://www.google.com/maps/place/Klepsydra/data=!4m7!3m6!1s0x14a1bd180ef8833b:0x314400d37960ff27!8m2!3d37.973465!4d23.726614!16s%2Fg%2F11b6dybwvx!19sChIJO4P4Dhi9oRQRJ_9gedMARDE?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 129.0}, {&quot;title&quot;: &quot;Hard Rock Cafe&quot;, &quot;category&quot;: &quot;American restaurant&quot;, &quot;address&quot;: &quot;Adrianou 52, Athina 105 55, Greece&quot;, &quot;website&quot;: &quot;https://cafe.hardrock.com/athens/#utm_source=Google&amp;utm_medium=Yext&amp;utm_campaign=Listings&quot;, &quot;phone&quot;: &quot;+30 21 0324 5170&quot;, &quot;price&quot;: &quot;€15–35&quot;, &quot;rating&quot;: 4.4, &quot;reviews&quot;: 6971, &quot;lat&quot;: 37.975671, &quot;lon&quot;: 23.725244, &quot;link&quot;: &quot;https://www.google.com/maps/place/Hard+Rock+Cafe/data=!4m7!3m6!1s0x14a1bd22f28bd3d5:0xe54de9c59549c0e7!8m2!3d37.9756712!4d23.7252445!16s%2Fg%2F11bc70_jz2!19sChIJ1dOL8iK9oRQR58BJlcXpTeU?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 129.0}, {&quot;title&quot;: &quot;Καφενείον \&quot;Η Ωραία Ελλάς\&quot; / Kafeneio Oraia Ellas&quot;, &quot;category&quot;: &quot;Restaurant&quot;, &quot;address&quot;: &quot;Μητροπόλεως 59 &amp; (Στοά) Πανδρόσου 36, Plateía Mitropóleos 59, Athina 105 55, Greece&quot;, &quot;website&quot;: &quot;https://www.oraiahellasrestaurant.gr/&quot;, &quot;phone&quot;: &quot;+30 21 0321 6850&quot;, &quot;price&quot;: &quot;€10–30&quot;, &quot;rating&quot;: 4.1, &quot;reviews&quot;: 1654, &quot;lat&quot;: 37.975962, &quot;lon&quot;: 23.727071, &quot;link&quot;: &quot;https://www.google.com/maps/place/%CE%9A%CE%B1%CF%86%CE%B5%CE%BD%CE%B5%CE%AF%CE%BF%CE%BD+%22%CE%97+%CE%A9%CF%81%CE%B1%CE%AF%CE%B1+%CE%95%CE%BB%CE%BB%CE%AC%CF%82%22+%2F+Kafeneio+Oraia+Ellas/data=!4m7!3m6!1s0x14a1bd22d1c926bb:0x5a2f60ea798e5576!8m2!3d37.9759619!4d23.7270714!16s%2Fg%2F11bwgwgjfs!19sChIJuybJ0SK9oRQRdlWOeepgL1o?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 123.0}, {&quot;title&quot;: &quot;Couleur Locale&quot;, &quot;category&quot;: &quot;Bistro&quot;, &quot;address&quot;: &quot;Normanou 3, Athina 105 55, Greece&quot;, &quot;website&quot;: &quot;https://www.couleurlocaleathens.com/&quot;, &quot;phone&quot;: &quot;+30 21 6700 4917&quot;, &quot;price&quot;: &quot;€10–20&quot;, &quot;rating&quot;: 4.5, &quot;reviews&quot;: 11116, &quot;lat&quot;: 37.976655, &quot;lon&quot;: 23.724495, &quot;link&quot;: &quot;https://www.google.com/maps/place/Couleur+Locale/data=!4m7!3m6!1s0x14a1bd2255d23b63:0x4b35c1b89153d25d!8m2!3d37.9766552!4d23.7244955!16s%2Fg%2F11b6nccsvm!19sChIJYzvSVSK9oRQRXdJTkbjBNUs?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 131.0}, {&quot;title&quot;: &quot;Flint Athens&quot;, &quot;category&quot;: &quot;Restaurant&quot;, &quot;address&quot;: &quot;Ag. Anargiron 6, Athina 105 54, Greece&quot;, &quot;website&quot;: &quot;https://facebook.com/flintathens&quot;, &quot;phone&quot;: &quot;+30 694 990 9297&quot;, &quot;price&quot;: &quot;€15–25&quot;, &quot;rating&quot;: 4.6, &quot;reviews&quot;: 2229, &quot;lat&quot;: 37.978586, &quot;lon&quot;: 23.724502, &quot;link&quot;: &quot;https://www.google.com/maps/place/Flint+Athens/data=!4m7!3m6!1s0x14a1bde46b264f07:0x28e1e2dc3340d092!8m2!3d37.9785856!4d23.724502!16s%2Fg%2F11qbbb88gm!19sChIJB08ma-S9oRQRktBAM9zi4Sg?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 133.0}, {&quot;title&quot;: &quot;SNOB Athens Luxury Rooms &amp; Espresso Gastro Bar&quot;, &quot;category&quot;: &quot;Brunch restaurant&quot;, &quot;address&quot;: &quot;Agias Irinis 17, Athina 105 51, Greece&quot;, &quot;website&quot;: &quot;https://www.snobathens.com/&quot;, &quot;phone&quot;: &quot;+30 21 0324 2603&quot;, &quot;price&quot;: &quot;$$&quot;, &quot;rating&quot;: 4.3, &quot;reviews&quot;: 3084, &quot;lat&quot;: 37.977062, &quot;lon&quot;: 23.726726, &quot;link&quot;: &quot;https://www.google.com/maps/place/SNOB+Athens+Luxury+Rooms+%26+Espresso+Gastro+Bar/data=!4m7!3m6!1s0x14a1bd7ac8936939:0x5aab9bf76f9f02d8!8m2!3d37.9770616!4d23.7267262!16s%2Fg%2F11r_cmwptw!19sChIJOWmTyHq9oRQR2AKfb_ebq1o?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 127.0}, {&quot;title&quot;: &quot;Wild Souls Athens&quot;, &quot;category&quot;: &quot;Nut store&quot;, &quot;address&quot;: &quot;Voulis 36, Athina 105 57, Greece&quot;, &quot;website&quot;: &quot;http://www.wildsouls.gr/&quot;, &quot;phone&quot;: &quot;+30 21 0323 1438&quot;, &quot;price&quot;: &quot;Unknown&quot;, &quot;rating&quot;: 4.7, &quot;reviews&quot;: 1146, &quot;lat&quot;: 37.974493, &quot;lon&quot;: 23.732138, &quot;link&quot;: &quot;https://www.google.com/maps/place/Wild+Souls+Athens/data=!4m7!3m6!1s0x14a1bdfe7ac36573:0xf6418e0087aaa93f!8m2!3d37.9744934!4d23.7321376!16s%2Fg%2F11fp7trc9d!19sChIJc2XDev69oRQRP6mqhwCOQfY?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 135.0}, {&quot;title&quot;: &quot;Avit Athens&quot;, &quot;category&quot;: &quot;Vegan restaurant&quot;, &quot;address&quot;: &quot;Kalamiotou 8, Athina 105 60, Greece&quot;, &quot;website&quot;: &quot;https://avit.gr/&quot;, &quot;phone&quot;: &quot;+30 21 0325 3568&quot;, &quot;price&quot;: &quot;€10–30&quot;, &quot;rating&quot;: 4.7, &quot;reviews&quot;: 1133, &quot;lat&quot;: 37.976938, &quot;lon&quot;: 23.728945, &quot;link&quot;: &quot;https://www.google.com/maps/place/Avit+Athens/data=!4m7!3m6!1s0x14a1bf8b2370ffe1:0xa968245ea6d2eb11!8m2!3d37.976938!4d23.7289449!16s%2Fg%2F11gjh92qcg!19sChIJ4f9wI4u_oRQREevSpl4kaKk?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 135.0}, {&quot;title&quot;: &quot;Little Kook&quot;, &quot;category&quot;: &quot;Patisserie&quot;, &quot;address&quot;: &quot;Karaiskaki 17, Athina 105 54, Greece&quot;, &quot;website&quot;: &quot;https://littlekook.gr/?utm_source=Google%20my%20Bussines&amp;utm_medium=GMBLittleKook&quot;, &quot;phone&quot;: &quot;+30 21 0321 4144&quot;, &quot;price&quot;: &quot;$$&quot;, &quot;rating&quot;: 4.3, &quot;reviews&quot;: 30528, &quot;lat&quot;: 37.97772, &quot;lon&quot;: 23.724287, &quot;link&quot;: &quot;https://www.google.com/maps/place/Little+Kook/data=!4m7!3m6!1s0x14a1bd23a64123af:0x3788ec5c0bfa59b9!8m2!3d37.97772!4d23.7242868!16s%2Fg%2F11cjk412ds!19sChIJryNBpiO9oRQRuVn6C1zsiDc?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 127.0}, {&quot;title&quot;: &quot;Metropolis Roof Garden&quot;, &quot;category&quot;: &quot;Restaurant&quot;, &quot;address&quot;: &quot;Mitropoleos 15, Athina 105 57, Greece&quot;, &quot;website&quot;: &quot;https://www.electrahotels.gr/hotels/electra-metropolis-athens/restaurants/metropolis-roof-garden/&quot;, &quot;phone&quot;: &quot;+30 21 4100 6290&quot;, &quot;price&quot;: &quot;€50+&quot;, &quot;rating&quot;: 4.7, &quot;reviews&quot;: 1556, &quot;lat&quot;: 37.975029, &quot;lon&quot;: 23.732012, &quot;link&quot;: &quot;https://www.google.com/maps/place/Metropolis+Roof+Garden/data=!4m7!3m6!1s0x14a1bd3dca14edbd:0x2e51380bec8fc158!8m2!3d37.9750293!4d23.7320123!16s%2Fg%2F11d_9gffjj!19sChIJve0Uyj29oRQRWMGP7As4US4?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 135.0}, {&quot;title&quot;: &quot;HAPPY BLENDER&quot;, &quot;category&quot;: &quot;Vegan restaurant&quot;, &quot;address&quot;: &quot;Ifestou 39, Athina 105 55, Greece&quot;, &quot;website&quot;: &quot;http://happyblender.gr/&quot;, &quot;phone&quot;: &quot;+30 21 0363 8484&quot;, &quot;price&quot;: &quot;$$&quot;, &quot;rating&quot;: 4.7, &quot;reviews&quot;: 2356, &quot;lat&quot;: 37.976326, &quot;lon&quot;: 23.723374, &quot;link&quot;: &quot;https://www.google.com/maps/place/HAPPY+BLENDER/data=!4m7!3m6!1s0x14a1bd22468c40f9:0xcd12aebb13cf3ffa!8m2!3d37.9763263!4d23.7233745!16s%2Fg%2F11g8kt3r_y!19sChIJ-UCMRiK9oRQR-j_PE7uuEs0?authuser=0&amp;hl=en&amp;rclk=1&quot;, &quot;score&quot;: 135.0}], &quot;summary&quot;: {&quot;places&quot;: 76, &quot;avg_rating&quot;: 4.58, &quot;median_reviews&quot;: 1205, &quot;max_reviews&quot;: 30528, &quot;categories&quot;: [[&quot;Coffee shop&quot;, 20], [&quot;Cafe&quot;, 18], [&quot;Restaurant&quot;, 10], [&quot;Brunch restaurant&quot;, 5], [&quot;Bar&quot;, 5], [&quot;Greek restaurant&quot;, 3], [&quot;Vegan restaurant&quot;, 3], [&quot;Bistro&quot;, 3], [&quot;Coffee store&quot;, 2], [&quot;Breakfast restaurant&quot;, 1], [&quot;Mediterranean restaurant&quot;, 1], [&quot;Art cafe&quot;, 1], [&quot;Vegetarian cafe and deli&quot;, 1], [&quot;American restaurant&quot;, 1], [&quot;Nut store&quot;, 1], [&quot;Patisserie&quot;, 1]], &quot;prices&quot;: [[&quot;€5–10&quot;, 22], [&quot;€1–5&quot;, 18], [&quot;€10–15&quot;, 10], [&quot;€15–25&quot;, 4], [&quot;€5–15&quot;, 4], [&quot;$$&quot;, 4], [&quot;€10–30&quot;, 3], [&quot;€15–35&quot;, 2], [&quot;€10–20&quot;, 2], [&quot;€20–40&quot;, 1], [&quot;€1–20&quot;, 1], [&quot;€5–20&quot;, 1], [&quot;€10–35&quot;, 1], [&quot;€15–20&quot;, 1], [&quot;Unknown&quot;, 1], [&quot;€50+&quot;, 1]], &quot;website_rate&quot;: 72, &quot;phone_rate&quot;: 97, &quot;high_rating_count&quot;: 30, &quot;generated_at&quot;: &quot;2026-06-17 11:28 UTC&quot;}}</script>
+  <script>
+    const source = JSON.parse(document.getElementById('dataset').textContent);
+    const rows = source.rows;
+    const summary = source.summary;
+    const state = { search: '', category: 'All', sort: 'score', direction: -1 };
+
+    const byId = id => document.getElementById(id);
+    const fmt = value => value === null || value === undefined || value === '' ? 'n/a' : value;
+    const numberSort = key => ['rating', 'reviews', 'score'].includes(key);
+
+    function filteredRows() {
+      const needle = state.search.toLowerCase();
+      return rows.filter(row => {
+        const textMatch = !needle || `${row.title} ${row.category} ${row.address}`.toLowerCase().includes(needle);
+        const categoryMatch = state.category === 'All' || row.category === state.category;
+        return textMatch && categoryMatch;
+      }).sort((a, b) => {
+        const av = a[state.sort];
+        const bv = b[state.sort];
+        if (numberSort(state.sort)) {
+          return ((av ?? -1) - (bv ?? -1)) * state.direction;
+        }
+        return String(av ?? '').localeCompare(String(bv ?? '')) * state.direction;
+      });
+    }
+
+    function renderKpis(list) {
+      const ratings = list.map(row => row.rating).filter(value => value !== null);
+      const reviews = list.map(row => row.reviews).filter(value => value !== null).sort((a, b) => a - b);
+      const avgRating = ratings.length ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(2) : 'n/a';
+      const medianReviews = reviews.length ? reviews[Math.floor(reviews.length / 2)] : 'n/a';
+      const topScore = list.length ? Math.max(...list.map(row => row.score)).toFixed(1) : 'n/a';
+      const websiteRate = list.length ? Math.round(list.filter(row => row.website).length / list.length * 100) + '%' : 'n/a';
+      const items = [
+        ['Visible places', list.length],
+        ['Avg rating', avgRating],
+        ['Median reviews', medianReviews],
+        ['Top score', topScore],
+        ['With website', websiteRate],
+        ['Generated', summary.generated_at],
+      ];
+      byId('kpis').innerHTML = items.map(([label, value]) => `<div class="kpi"><span>${label}</span><strong>${value}</strong></div>`).join('');
+    }
+
+    function renderBars(id, pairs, color) {
+      const max = Math.max(1, ...pairs.map(item => item[1]));
+      byId(id).innerHTML = pairs.slice(0, 12).map(([label, count]) => `
+        <div class="bar-row" title="${label}: ${count}">
+          <div class="bar-label">${label}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${count / max * 100}%;background:${color}"></div></div>
+          <div class="muted">${count}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderMap(list) {
+      const svg = byId('map');
+      const points = list.filter(row => row.lat !== null && row.lon !== null);
+      svg.innerHTML = '';
+      svg.setAttribute('viewBox', '0 0 900 430');
+      if (!points.length) return;
+      const lats = points.map(row => row.lat);
+      const lons = points.map(row => row.lon);
+      const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+      const minLon = Math.min(...lons), maxLon = Math.max(...lons);
+      const latSpan = Math.max(0.001, maxLat - minLat);
+      const lonSpan = Math.max(0.001, maxLon - minLon);
+      const maxReviews = Math.max(1, ...points.map(row => row.reviews || 0));
+      for (const row of points) {
+        const x = 28 + ((row.lon - minLon) / lonSpan) * 844;
+        const y = 402 - ((row.lat - minLat) / latSpan) * 374;
+        const radius = 5 + Math.sqrt((row.reviews || 0) / maxReviews) * 14;
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', x.toFixed(2));
+        circle.setAttribute('cy', y.toFixed(2));
+        circle.setAttribute('r', radius.toFixed(2));
+        circle.setAttribute('fill', row.rating >= 4.7 ? '#1f8a5b' : row.rating >= 4.4 ? '#1f6feb' : '#b54708');
+        circle.setAttribute('fill-opacity', '0.55');
+        circle.setAttribute('stroke', '#151a22');
+        circle.setAttribute('stroke-width', '0.7');
+        const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+        title.textContent = `${row.title} | ${row.rating} | ${row.reviews} reviews`;
+        circle.appendChild(title);
+        svg.appendChild(circle);
+      }
+    }
+
+    function segmentLabel(row) {
+      if ((row.rating ?? 0) >= 4.7 && (row.reviews ?? 0) >= 500) return 'Proven leaders';
+      if ((row.rating ?? 0) >= 4.7) return 'Highly rated';
+      if ((row.reviews ?? 0) >= 1000) return 'High visibility';
+      if ((row.rating ?? 0) < 4.2) return 'Weak rating';
+      if ((row.reviews ?? 0) < 100) return 'Low proof';
+      return 'Stable middle';
+    }
+
+    function renderMatrix(list) {
+      const counts = new Map();
+      for (const row of list) counts.set(segmentLabel(row), (counts.get(segmentLabel(row)) || 0) + 1);
+      const labels = ['Proven leaders', 'Highly rated', 'High visibility', 'Stable middle', 'Low proof', 'Weak rating'];
+      byId('matrix').innerHTML = labels.map(label => `<div class="cell"><strong>${counts.get(label) || 0}</strong><div>${label}</div></div>`).join('');
+    }
+
+    function renderPlaces(list) {
+      byId('places').innerHTML = list.slice(0, 9).map(row => `
+        <article class="place">
+          <h3><a href="${row.link}" target="_blank" rel="noopener noreferrer">${row.title}</a></h3>
+          <div class="muted">${row.category}</div>
+          <div class="meta">
+            <span class="chip">Rating ${fmt(row.rating)}</span>
+            <span class="chip">${fmt(row.reviews)} reviews</span>
+            <span class="chip">Score ${fmt(row.score)}</span>
+          </div>
+          <div class="muted">${row.address || 'No address'}</div>
+        </article>
+      `).join('');
+    }
+
+    function renderTable(list) {
+      byId('table').innerHTML = list.map(row => `
+        <tr>
+          <td><a href="${row.link}" target="_blank" rel="noopener noreferrer">${row.title}</a></td>
+          <td>${row.category}</td>
+          <td>${fmt(row.rating)}</td>
+          <td>${fmt(row.reviews)}</td>
+          <td>${fmt(row.score)}</td>
+          <td>${row.price}</td>
+        </tr>
+      `).join('');
+    }
+
+    function render() {
+      const list = filteredRows();
+      renderKpis(list);
+      renderMap(list);
+      renderMatrix(list);
+      renderPlaces([...list].sort((a, b) => b.score - a.score));
+      renderTable(list);
+    }
+
+    function setup() {
+      const categorySelect = byId('category');
+      const categories = ['All', ...new Set(rows.map(row => row.category).sort())];
+      categorySelect.innerHTML = categories.map(category => `<option value="${category}">${category}</option>`).join('');
+      renderBars('categoryBars', summary.categories, 'var(--blue)');
+      renderBars('priceBars', summary.prices, 'var(--green)');
+      byId('search').addEventListener('input', event => { state.search = event.target.value; render(); });
+      categorySelect.addEventListener('change', event => { state.category = event.target.value; render(); });
+      byId('reset').addEventListener('click', () => {
+        state.search = '';
+        state.category = 'All';
+        byId('search').value = '';
+        categorySelect.value = 'All';
+        render();
+      });
+      document.querySelectorAll('th[data-sort]').forEach(th => {
+        th.addEventListener('click', () => {
+          const key = th.dataset.sort;
+          state.direction = state.sort === key ? state.direction * -1 : (numberSort(key) ? -1 : 1);
+          state.sort = key;
+          render();
+        });
+      });
+      render();
+    }
+
+    setup();
+  </script>
+</body>
+</html>
