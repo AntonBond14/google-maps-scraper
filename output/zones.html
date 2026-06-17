@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Da Nang Restaurants - Zones</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+  <link rel="stylesheet" href="assets/danang-dashboard.css">
+</head>
+<body data-page="zones">
+  <div class="shell">
+    <header class="topbar">
+      <div>
+        <h1>Da Nang Restaurants - Zones</h1>
+        <div class="muted">Da Nang restaurants from Google Maps. Generated from enriched JSON.</div>
+      </div>
+      <nav class="nav" aria-label="Dashboard navigation">
+        <a class="" href="dashboard.html">Full list</a>
+        <a class="" href="map.html">Map</a>
+        <a class="active" href="zones.html">Zones</a>
+      </nav>
+    </header>
+
+
+<section class="filters" aria-label="Filters">
+  <input id="search" type="search" placeholder="Search name, category, address">
+  <select id="zoneFilter" aria-label="Zone or line">
+    <option value="all">All zones</option>
+    <option value="line:beachfront">Beachfront / first line</option>
+    <option value="line:second">Second line</option>
+    <option value="line:third_city">Third line / city</option>
+    <option value="area:an_thuong_my_an">An Thuong / My An tourist area (approx.)</option>
+    <option value="area:my_khe">My Khe beach area (approx.)</option>
+    <option value="area:han_dragon">Han River / Dragon Bridge area (approx.)</option>
+    <option value="area:son_tra_man_thai">Son Tra / Man Thai area (approx.)</option>
+  </select>
+  <select id="ratingFilter" aria-label="Minimum rating">
+    <option value="0">Any rating</option>
+    <option value="4">Rating 4.0+</option>
+    <option value="4.3">Rating 4.3+</option>
+    <option value="4.5">Rating 4.5+</option>
+    <option value="4.8">Rating 4.8+</option>
+  </select>
+  <label class="check"><input id="hasPhone" type="checkbox"> Has phone</label>
+  <label class="check"><input id="hasWebsite" type="checkbox"> Has website</label>
+  <label class="check"><input id="hasMessenger" type="checkbox"> Has messengers</label>
+  <span id="count" class="count"></span>
+</section>
+
+<section id="zoneCards" class="zone-grid"></section>
+<div class="layout">
+  <main>
+    <section class="panel">
+      <h2>Approximate restaurant zones on real map</h2>
+      <div id="leafletMap"></div>
+      <div class="map-note">All polygons are approximate GeoJSON overlays. They were fitted from the current restaurant coordinate spread plus Da Nang beach, Han River and tourist-area landmarks.</div>
+    </section>
+    <section class="panel" style="margin-top:16px">
+      <h2>Without coordinates</h2>
+      <div id="missing" class="missing-list"></div>
+    </section>
+  </main>
+  <aside>
+    <section id="stats" class="stats"></section>
+    <section class="panel">
+      <h2>Visible restaurants</h2>
+      <div id="sideList" class="side-list"></div>
+    </section>
+  </aside>
+</div>
+
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+  <script src="assets/danang-restaurants-data.js"></script>
+  <script src="assets/danang-dashboard.js"></script>
+</body>
+</html>
