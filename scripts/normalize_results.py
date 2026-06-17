@@ -67,6 +67,13 @@ SOCIAL_HOSTS = (
     "linkedin.com",
     "pinterest.com",
     "tripadvisor.com",
+    "zalo.me",
+    "m.me",
+    "messenger.com",
+    "t.me",
+    "telegram.org",
+    "viber.com",
+    "wa.me",
 )
 
 # Match a single email in free text.

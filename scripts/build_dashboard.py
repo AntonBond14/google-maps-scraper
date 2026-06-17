@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""Generate a self-contained HTML dashboard from normalized restaurant JSON.
+"""Generate a self-contained HTML dashboard from enriched restaurant JSON.
+
+Expects the JSON produced by validate_contacts.py (or the plain normalized JSON
+as a fallback).  Renders verified contact channels, badges, and filters for
+Vietnam-specific messaging apps (Zalo, WhatsApp, Telegram, Viber, Messenger).
 
 Usage:
-    python build_dashboard.py <normalized.json> [output.html]
+    python build_dashboard.py <enriched.json> [output.html]
 """
 from __future__ import annotations
 
@@ -31,42 +35,128 @@ def render_stars(rating: float) -> str:
     return f'<span class="stars" title="{rating:.1f}">{stars}</span>'
 
 
+def badge_html(status: str | None, label: str = "") -> str:
+    """Render a status badge."""
+    if not status or status == "unknown":
+        cls = "badge-unknown"
+        text = label or "unknown"
+    elif status == "valid":
+        cls = "badge-valid"
+        text = label or "verified"
+    elif status == "invalid":
+        cls = "badge-invalid"
+        text = label or "not found"
+    else:
+        cls = "badge-unknown"
+        text = label or status
+    return f'<span class="badge {cls}">{esc(text)}</span>'
+
+
+def action_button(href: str | None, icon: str, label: str, css_class: str,
+                  status: str | None = None, disabled: bool = False) -> str:
+    """Render a single action button with optional disabled state."""
+    if disabled or not href:
+        return (
+            f'<span class="btn btn-disabled" title="Not available">'
+            f'{icon} {esc(label)}</span>'
+        )
+    if status == "invalid":
+        return (
+            f'<span class="btn btn-invalid" title="Not found / invalid">'
+            f'{icon} {esc(label)}</span>'
+        )
+    if status == "unknown":
+        return (
+            f'<a class="btn btn-unknown" href="{esc(href)}" target="_blank" '
+            f'rel="noopener" title="Not verified">'
+            f'{icon} {esc(label)}</a>'
+        )
+    return (
+        f'<a class="btn {css_class}" href="{esc(href)}" target="_blank" '
+        f'rel="noopener">'
+        f'{icon} {esc(label)}</a>'
+    )
+
+
 def action_buttons(r: dict) -> str:
-    """Render action button links for a restaurant."""
+    """Render action buttons for a restaurant (enriched data)."""
     btns = []
 
-    # Google Maps
+    # Google Maps — always shown if URL exists
     gmap = r.get("google_maps_url")
     if gmap:
+        btns.append(action_button(gmap, "🗺️", "Maps", "btn-maps"))
+
+    # Phone — show if valid
+    phone = r.get("phone")
+    phone_valid = r.get("phone_valid", True)
+    if phone:
         btns.append(
-            f'<a class="btn btn-maps" href="{esc(gmap)}" target="_blank" rel="noopener">🗺️ Maps</a>'
+            action_button(
+                f"tel:{phone}", "📞", "Call", "btn-phone",
+                None if phone_valid else "invalid",
+                disabled=not phone_valid,
+            )
         )
 
-    # Phone
-    phone = r.get("phone")
-    if phone:
-        tel = f"tel:{phone}"
-        btns.append(f'<a class="btn btn-phone" href="{tel}">📞 Call</a>')
-
-    # Website
+    # Website — show if reachable or unknown
     site = r.get("website")
+    ws_status = r.get("website_status", "unknown")
     if site:
         btns.append(
-            f'<a class="btn btn-web" href="{esc(site)}" target="_blank" rel="noopener">🌐 Website</a>'
+            action_button(site, "🌐", "Website", "btn-web", ws_status)
         )
 
-    # WhatsApp
-    wa = r.get("whatsapp_url")
-    if wa:
+    # WhatsApp — only if valid or unknown (not invalid)
+    wa_status = r.get("whatsapp_status", "unknown")
+    wa_url = r.get("whatsapp_url")
+    if wa_status != "invalid" and wa_url:
         btns.append(
-            f'<a class="btn btn-wa" href="{esc(wa)}" target="_blank" rel="noopener">💬 WhatsApp</a>'
+            action_button(wa_url, "💬", "WhatsApp", "btn-wa", wa_status)
         )
 
-    # Email
+    # Zalo — only if not invalid
+    zalo_status = r.get("zalo_status", "unknown")
+    zalo_url = r.get("zalo_url")
+    if zalo_status != "invalid" and zalo_url:
+        btns.append(
+            action_button(zalo_url, "🟣", "Zalo", "btn-zalo", zalo_status)
+        )
+
+    # Facebook Messenger — show if found
+    msg_status = r.get("messenger_status", "unknown")
+    msg_url = r.get("messenger_url")
+    if msg_url:
+        btns.append(
+            action_button(msg_url, "📘", "Messenger", "btn-messenger", msg_status)
+        )
+
+    # Telegram — show if found
+    tg_status = r.get("telegram_status", "unknown")
+    tg_url = r.get("telegram_url")
+    if tg_url:
+        btns.append(
+            action_button(tg_url, "✈️", "Telegram", "btn-telegram", tg_status)
+        )
+
+    # Viber — show if not invalid
+    viber_status = r.get("viber_status", "unknown")
+    viber_url = r.get("viber_url")
+    if viber_status != "invalid" and viber_url:
+        btns.append(
+            action_button(viber_url, "📞", "Viber", "btn-viber", viber_status)
+        )
+
+    # Email — show if valid
+    email = r.get("email")
     email_url = r.get("email_url")
-    if email_url:
+    email_valid = r.get("email_valid", bool(email))
+    if email and email_url:
         btns.append(
-            f'<a class="btn btn-email" href="{esc(email_url)}">✉️ Email</a>'
+            action_button(
+                email_url, "✉️", "Email", "btn-email",
+                "valid" if email_valid else "unknown",
+            )
         )
 
     return "\n".join(btns)
@@ -93,10 +183,33 @@ def social_links_html(r: dict) -> str:
             icon = "🎵"
         elif "youtube" in host:
             icon = "▶️"
+        elif "zalo" in host:
+            icon = "🟣"
         parts.append(
-            f'<a class="social-link" href="{esc(url)}" target="_blank" rel="noopener" title="{esc(source)}">{icon} {esc(source)}</a>'
+            f'<a class="social-link" href="{esc(url)}" target="_blank" '
+            f'rel="noopener" title="{esc(source)}">'
+            f'{icon} {esc(source)}</a>'
         )
     return '<div class="social-row">' + " ".join(parts) + "</div>"
+
+
+def badges_html(r: dict) -> str:
+    """Render verification badges for all channels."""
+    parts = []
+    for ch in ("whatsapp", "zalo", "messenger", "telegram", "viber"):
+        st = r.get(f"{ch}_status")
+        if st and st != "unknown":
+            parts.append(badge_html(st, ch.capitalize()))
+    # Phone badge
+    if r.get("phone_valid") is not None:
+        parts.append(badge_html("valid" if r.get("phone_valid") else "invalid", "Phone"))
+    # Email badge
+    em_st = r.get("email_status")
+    if em_st and em_st != "unknown":
+        parts.append(badge_html(em_st, "Email"))
+    if not parts:
+        return ""
+    return '<div class="badges-row">' + " ".join(parts) + "</div>"
 
 
 def render_restaurant_card(r: dict) -> str:
@@ -104,26 +217,45 @@ def render_restaurant_card(r: dict) -> str:
     thumbnail = r.get("thumbnail") or ""
     thumb_html = ""
     if thumbnail:
-        thumb_html = f'<img class="thumb" src="{esc(thumbnail)}" alt="" loading="lazy">'
+        thumb_html = (
+            f'<img class="thumb" src="{esc(thumbnail)}" alt="" loading="lazy">'
+        )
 
     status = r.get("status") or ""
-    status_class = "closed" if status and ("closed" in status.lower() or "temporarily" in status.lower()) else ""
+    status_class = (
+        "closed"
+        if status and ("closed" in status.lower() or "temporarily" in status.lower())
+        else ""
+    )
 
     price = esc(r.get("price_range") or "")
 
+    # Data attributes for JS filtering
+    data_attrs = (
+        f' data-rating="{r.get("rating", 0) or 0}"'
+        f' data-reviews="{r.get("reviews", 0) or 0}"'
+        f' data-has-phone="{"1" if r.get("phone") else "0"}'
+        f'" data-has-website="{"1" if r.get("website") else "0"}'
+        f'" data-has-zalo="{"1" if r.get("zalo_status") in ("valid", "unknown") else "0"}'
+        f'" data-has-whatsapp="{"1" if r.get("whatsapp_status") in ("valid", "unknown") else "0"}'
+        f'" data-has-messenger="{"1" if r.get("messenger_status") in ("valid", "unknown") else "0"}'
+        f'" data-has-email="{"1" if r.get("email") else "0"}'
+        f'" data-has-telegram="{"1" if r.get("telegram_status") in ("valid", "unknown") else "0"}'
+        f'" data-has-viber="{"1" if r.get("viber_status") in ("valid", "unknown") else "0"}'
+        f'" data-verified="{"1" if _is_verified(r) else "0"}'
+    )
+
     return f"""
-<div class="card" data-rating="{r.get('rating', 0) or 0}" data-reviews="{r.get('reviews', 0) or 0}"
-     data-has-phone='{"1" if r.get("phone") else "0"}'
-     data-has-website='{"1" if r.get("website") else "0"}'>
+<div class="card"{data_attrs}>
   <div class="card-body">
     <div class="card-top">
       {thumb_html}
       <div class="card-info">
-        <h3 class="card-title">{esc(r.get('title'))}</h3>
+        <h3 class="card-title">{esc(r.get("title"))}</h3>
         <div class="card-meta">
-          <span class="category">{esc(r.get('category'))}</span>
-          {f'<span class="price">{price}</span>' if price else ''}
-          {f'<span class="status {status_class}">{esc(status)}</span>' if status else ''}
+          <span class="category">{esc(r.get("category"))}</span>
+          {f'<span class="price">{price}</span>' if price else ""}
+          {f'<span class="status {status_class}">{esc(status)}</span>' if status else ""}
         </div>
         <div class="card-rating">
           {render_stars(r.get("rating") or 0)}
@@ -132,12 +264,11 @@ def render_restaurant_card(r: dict) -> str:
         </div>
       </div>
     </div>
-    <div class="card-address">
-      <span class="label">📍</span> {esc(r.get('address'))}
-    </div>
-    {f'<div class="card-phone"><span class="label">📱</span> <a href="tel:{esc(r.get("phone"))}">{esc(r.get("phone"))}</a></div>' if r.get("phone") else ''}
-    {f'<div class="card-website"><span class="label">🌐</span> <a href="{esc(r.get("website"))}" target="_blank" rel="noopener">{esc(r.get("website"))}</a></div>' if r.get("website") else ''}
-    {f'<div class="card-email"><span class="label">✉️</span> <a href="{esc(r.get("email_url"))}">{esc(r.get("email"))}</a></div>' if r.get("email") else ''}
+    {badges_html(r)}
+    <div class="card-address"><span class="label">📍</span> {esc(r.get("address"))}</div>
+    {f'<div class="card-phone"><span class="label">📱</span> <a href="tel:{esc(r.get("phone"))}">{esc(r.get("phone"))}</a></div>' if r.get("phone") else ""}
+    {f'<div class="card-website"><span class="label">🌐</span> <a href="{esc(r.get("website"))}" target="_blank" rel="noopener">{esc(r.get("website"))}</a></div>' if r.get("website") else ""}
+    {f'<div class="card-email"><span class="label">✉️</span> <a href="{esc(r.get("email_url"))}">{esc(r.get("email"))}</a></div>' if r.get("email") else ""}
     {social_links_html(r)}
     <div class="card-actions">
       {action_buttons(r)}
@@ -146,7 +277,29 @@ def render_restaurant_card(r: dict) -> str:
 </div>"""
 
 
+def _is_verified(r: dict) -> bool:
+    """Check if at least one channel is verified valid."""
+    if r.get("phone_valid"):
+        return True
+    if r.get("whatsapp_status") == "valid":
+        return True
+    if r.get("zalo_status") == "valid":
+        return True
+    if r.get("messenger_status") == "valid":
+        return True
+    if r.get("telegram_status") == "valid":
+        return True
+    if r.get("viber_status") == "valid":
+        return True
+    if r.get("email_status") == "valid":
+        return True
+    if r.get("website_status") == "valid":
+        return True
+    return False
+
+
 def build_dashboard(data: dict) -> str:
+    """Build the full HTML dashboard from enriched data."""
     restaurants = data.get("restaurants") or []
     total = data.get("total", len(restaurants))
 
@@ -158,11 +311,20 @@ def build_dashboard(data: dict) -> str:
     with_website = sum(1 for r in restaurants if r.get("website"))
     with_email = sum(1 for r in restaurants if r.get("email"))
 
+    # Channel stats (enriched)
+    vsummary = data.get("validation_summary") or {}
+    wa = vsummary.get("whatsapp", {})
+    za = vsummary.get("zalo", {})
+    ms = vsummary.get("messenger", {})
+    tg = vsummary.get("telegram", {})
+    vb = vsummary.get("viber", {})
+
     categories = Counter(r.get("category") or "" for r in restaurants)
 
     # Top 10 categories
     cat_items = "\n".join(
-        f'<li><span class="cat-name">{esc(c)}</span> <span class="cat-count">{cnt}</span></li>'
+        f'<li><span class="cat-name">{esc(c)}</span> '
+        f'<span class="cat-count">{cnt}</span></li>'
         for c, cnt in categories.most_common(10)
     )
 
@@ -179,45 +341,44 @@ def build_dashboard(data: dict) -> str:
         else:
             buckets["4.5+"] += 1
     bucket_items = "\n".join(
-        f'<li><span class="cat-name">{esc(k)}</span> <span class="cat-count">{v}</span></li>'
+        f'<li><span class="cat-name">{esc(k)}</span> '
+        f'<span class="cat-count">{v}</span></li>'
         for k, v in sorted(buckets.items())
     )
 
-    # Restaurants JSON for embedding
+    # Channel summary panel
+    channel_items = (
+        f'<li><span class="cat-name">📱 Phone (valid)</span> '
+        f'<span class="cat-count">{vsummary.get("phone_valid", with_phone)}</span></li>'
+        f'<li><span class="cat-name">💬 WhatsApp</span> '
+        f'<span class="cat-count">✓{wa.get("valid",0)} ✗{wa.get("invalid",0)} ?{wa.get("unknown",0)}</span></li>'
+        f'<li><span class="cat-name">🟣 Zalo</span> '
+        f'<span class="cat-count">✓{za.get("valid",0)} ✗{za.get("invalid",0)} ?{za.get("unknown",0)}</span></li>'
+        f'<li><span class="cat-name">📘 Messenger</span> '
+        f'<span class="cat-count">✓{ms.get("valid",0)} ?{ms.get("unknown",0)}</span></li>'
+        f'<li><span class="cat-name">✈️ Telegram</span> '
+        f'<span class="cat-count">✓{tg.get("valid",0)} ?{tg.get("unknown",0)}</span></li>'
+        f'<li><span class="cat-name">📞 Viber</span> '
+        f'<span class="cat-count">✓{vb.get("valid",0)} ?{vb.get("unknown",0)}</span></li>'
+        f'<li><span class="cat-name">✉️ Email</span> '
+        f'<span class="cat-count">{vsummary.get("email", {}).get("valid", 0)}</span></li>'
+        f'<li><span class="cat-name">🌐 Website</span> '
+        f'<span class="cat-count">{vsummary.get("website", {}).get("reachable", with_website)}</span></li>'
+    )
+
     restaurants_json = json.dumps(restaurants, ensure_ascii=False, indent=None)
 
-    cards_html = f"""
-<div class="stat-card">
-  <div class="stat-label">Restaurants</div>
-  <div class="stat-value">{total}</div>
-</div>
-<div class="stat-card">
-  <div class="stat-label">Avg Rating</div>
-  <div class="stat-value">{avg_rating:.1f} ★</div>
-</div>
-<div class="stat-card">
-  <div class="stat-label">Max Reviews</div>
-  <div class="stat-value">{max_reviews:,}</div>
-</div>
-<div class="stat-card">
-  <div class="stat-label">With Phone</div>
-  <div class="stat-value">{with_phone}/{total} ({round(100*with_phone/total)}%)</div>
-</div>
-<div class="stat-card">
-  <div class="stat-label">With Website</div>
-  <div class="stat-value">{with_website}/{total} ({round(100*with_website/total)}%)</div>
-</div>
-<div class="stat-card">
-  <div class="stat-label">Categories</div>
-  <div class="stat-value">{len(categories)}</div>
-</div>"""
+    validated_at = data.get("validated_at", "")
+    validated_info = (
+        f" &middot; Validated {validated_at}" if validated_at else ""
+    )
 
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>🍽️ Da Nang Restaurants — Dashboard</title>
+<title>🍽️ Da Nang Restaurants — Verified Contacts Dashboard</title>
 <style>
 :root {{
   color-scheme: light;
@@ -230,6 +391,10 @@ def build_dashboard(data: dict) -> str:
   --green: #16a34a;
   --orange: #ea580c;
   --red: #dc2626;
+  --zalo: #0068ff;
+  --messenger: #0084ff;
+  --telegram: #0088cc;
+  --viber: #7360f2;
 }}
 * {{ box-sizing: border-box; margin: 0; padding: 0; }}
 body {{
@@ -283,7 +448,7 @@ body {{
 /* Sidebar lists */
 .sidebar {{
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 16px;
   margin-bottom: 20px;
 }}
@@ -313,6 +478,33 @@ body {{
 .sidebar-panel li:last-child {{ border-bottom: none; }}
 .cat-name {{ color: var(--muted); }}
 .cat-count {{ font-weight: 600; color: var(--accent); }}
+/* Badges */
+.badges-row {{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 6px 0;
+}}
+.badge {{
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 6px;
+  letter-spacing: 0.04em;
+}}
+.badge-valid {{
+  background: rgba(22,163,74,0.12);
+  color: var(--green);
+}}
+.badge-invalid {{
+  background: rgba(220,38,38,0.10);
+  color: var(--red);
+}}
+.badge-unknown {{
+  background: rgba(88,98,119,0.10);
+  color: var(--muted);
+}}
 /* Filters */
 .filters {{
   background: var(--panel);
@@ -350,8 +542,8 @@ body {{
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
 }}
-.filters-row input[type="text"] {{ width: 280px; }}
-.filters-row select {{ min-width: 150px; }}
+.filters-row input[type="text"] {{ width: 260px; }}
+.filters-row select {{ min-width: 140px; }}
 .filter-check {{
   display: flex;
   align-items: center;
@@ -533,7 +725,30 @@ body {{
 .btn-web {{ background: #dbeafe; color: #1d4ed8; }}
 .btn-maps {{ background: #fef3c7; color: #b45309; }}
 .btn-wa {{ background: #d1fae5; color: #047857; }}
+.btn-zalo {{ background: #dbeafe; color: var(--zalo); }}
+.btn-messenger {{ background: #e0f0ff; color: var(--messenger); }}
+.btn-telegram {{ background: #e0f4ff; color: var(--telegram); }}
+.btn-viber {{ background: #ede9fe; color: var(--viber); }}
 .btn-email {{ background: #ede9fe; color: #6d28d9; }}
+/* Disabled / unknown / invalid button states */
+.btn-disabled {{
+  background: #f0f0ec;
+  color: #aaa;
+  cursor: not-allowed;
+  opacity: 0.6;
+}}
+.btn-invalid {{
+  background: #fee2e2;
+  color: #b91c1c;
+  cursor: not-allowed;
+  opacity: 0.7;
+  text-decoration: line-through;
+}}
+.btn-unknown {{
+  background: #f3f4f6;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+}}
 /* No results */
 .no-results {{
   text-align: center;
@@ -550,6 +765,7 @@ body {{
 }}
 @media (max-width: 900px) {{
   .cards-grid {{ grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }}
+  .sidebar {{ grid-template-columns: 1fr 1fr; }}
 }}
 </style>
 </head>
@@ -561,13 +777,36 @@ body {{
     <h1>🍽️ Restaurants in Da Nang, Vietnam</h1>
     <p class="sub">
       Scraped from Google Maps &middot; {total} places &middot;
-      Generated {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")}
+      Generated {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")}{validated_info}
     </p>
   </div>
 
   <!-- Stats -->
   <div class="stats">
-    {cards_html}
+    <div class="stat-card">
+      <div class="stat-label">Restaurants</div>
+      <div class="stat-value">{total}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg Rating</div>
+      <div class="stat-value">{avg_rating:.1f} ★</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Max Reviews</div>
+      <div class="stat-value">{max_reviews:,}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">With Phone</div>
+      <div class="stat-value">{with_phone}/{total} ({round(100*with_phone/total) if total else 0}%)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">With Website</div>
+      <div class="stat-value">{with_website}/{total} ({round(100*with_website/total) if total else 0}%)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Categories</div>
+      <div class="stat-value">{len(categories)}</div>
+    </div>
   </div>
 
   <!-- Sidebar -->
@@ -579,6 +818,10 @@ body {{
     <div class="sidebar-panel">
       <h2>⭐ Rating Distribution</h2>
       <ul>{bucket_items}</ul>
+    </div>
+    <div class="sidebar-panel">
+      <h2>📊 Contact Channels</h2>
+      <ul>{channel_items}</ul>
     </div>
   </div>
 
@@ -606,8 +849,17 @@ body {{
         <option value="name-asc">Name A→Z</option>
         <option value="name-desc">Name Z→A</option>
       </select>
-      <label class="filter-check"><input type="checkbox" id="has-phone" checked> Phone only</label>
-      <label class="filter-check"><input type="checkbox" id="has-website"> Website only</label>
+    </div>
+    <div class="filters-row" style="margin-top:10px">
+      <label class="filter-check"><input type="checkbox" id="has-phone"> Has phone</label>
+      <label class="filter-check"><input type="checkbox" id="has-zalo"> Has Zalo</label>
+      <label class="filter-check"><input type="checkbox" id="has-whatsapp"> Has WhatsApp</label>
+      <label class="filter-check"><input type="checkbox" id="has-messenger"> Has Messenger</label>
+      <label class="filter-check"><input type="checkbox" id="has-email"> Has Email</label>
+      <label class="filter-check"><input type="checkbox" id="has-website"> Has Website</label>
+      <label class="filter-check"><input type="checkbox" id="has-telegram"> Has Telegram</label>
+      <label class="filter-check"><input type="checkbox" id="has-viber"> Has Viber</label>
+      <label class="filter-check"><input type="checkbox" id="only-verified"> Only verified</label>
       <span id="count-display"></span>
     </div>
   </div>
@@ -625,9 +877,19 @@ const grid = document.getElementById("grid");
 const searchInput = document.getElementById("search");
 const ratingFilter = document.getElementById("rating-filter");
 const sortSelect = document.getElementById("sort");
-const hasPhone = document.getElementById("has-phone");
-const hasWebsite = document.getElementById("has-website");
 const countDisplay = document.getElementById("count-display");
+
+const filterCheckboxes = {{
+  phone: document.getElementById("has-phone"),
+  zalo: document.getElementById("has-zalo"),
+  whatsapp: document.getElementById("has-whatsapp"),
+  messenger: document.getElementById("has-messenger"),
+  email: document.getElementById("has-email"),
+  website: document.getElementById("has-website"),
+  telegram: document.getElementById("has-telegram"),
+  viber: document.getElementById("has-viber"),
+  verified: document.getElementById("only-verified"),
+}};
 
 function escapeHtml(s) {{
   const d = document.createElement("div");
@@ -642,6 +904,37 @@ function starsHtml(rating) {{
     out += i <= Math.round(rating) ? "★" : "☆";
   }}
   return out + '</span>';
+}}
+
+function badgeHtml(status, label) {{
+  if (!status || status === "unknown")
+    return '<span class="badge badge-unknown">' + escapeHtml(label || "unknown") + '</span>';
+  if (status === "valid")
+    return '<span class="badge badge-valid">' + escapeHtml(label || "verified") + '</span>';
+  if (status === "invalid")
+    return '<span class="badge badge-invalid">' + escapeHtml(label || "not found") + '</span>';
+  return '<span class="badge badge-unknown">' + escapeHtml(label || status) + '</span>';
+}}
+
+function isVerified(r) {{
+  return r.phone_valid
+    || r.whatsapp_status === "valid"
+    || r.zalo_status === "valid"
+    || r.messenger_status === "valid"
+    || r.telegram_status === "valid"
+    || r.viber_status === "valid"
+    || r.email_status === "valid"
+    || r.website_status === "valid";
+}}
+
+function actionBtn(href, icon, label, cls, status, disabled) {{
+  if (disabled || !href)
+    return '<span class="btn btn-disabled" title="Not available">' + icon + " " + escapeHtml(label) + '</span>';
+  if (status === "invalid")
+    return '<span class="btn btn-invalid" title="Not found / invalid">' + icon + " " + escapeHtml(label) + '</span>';
+  if (status === "unknown")
+    return '<a class="btn btn-unknown" href="' + escapeHtml(href) + '" target="_blank" rel="noopener" title="Not verified">' + icon + " " + escapeHtml(label) + '</a>';
+  return '<a class="btn ' + cls + '" href="' + escapeHtml(href) + '" target="_blank" rel="noopener">' + icon + " " + escapeHtml(label) + '</a>';
 }}
 
 function renderCard(r) {{
@@ -664,17 +957,47 @@ function renderCard(r) {{
       else if (h.includes("tripadvisor")) icon = "🧭";
       else if (h.includes("tiktok")) icon = "🎵";
       else if (h.includes("youtube")) icon = "▶️";
+      else if (h.includes("zalo")) icon = "🟣";
       social += '<a class="social-link" href="' + escapeHtml(s.url) + '" target="_blank" rel="noopener" title="' + escapeHtml(s.source) + '">' + icon + " " + escapeHtml(s.source) + '</a>';
     }});
     social += "</div>";
   }}
 
+  // Badges
+  let badges = '<div class="badges-row">';
+  const channels = ["whatsapp", "zalo", "messenger", "telegram", "viber"];
+  channels.forEach(ch => {{
+    const st = r[ch + "_status"];
+    if (st && st !== "unknown") badges += badgeHtml(st, ch.charAt(0).toUpperCase() + ch.slice(1));
+  }});
+  if (r.phone_valid !== undefined && r.phone_valid !== null) badges += badgeHtml(r.phone_valid ? "valid" : "invalid", "Phone");
+  if (r.email_status && r.email_status !== "unknown") badges += badgeHtml(r.email_status, "Email");
+  if (badges === '<div class="badges-row">') badges = "";
+  else badges += "</div>";
+
+  // Action buttons
   let btns = "";
-  if (r.google_maps_url) btns += '<a class="btn btn-maps" href="' + escapeHtml(r.google_maps_url) + '" target="_blank" rel="noopener">🗺️ Maps</a>';
-  if (phone) btns += '<a class="btn btn-phone" href="tel:' + escapeHtml(phone) + '">📞 Call</a>';
-  if (website) btns += '<a class="btn btn-web" href="' + escapeHtml(website) + '" target="_blank" rel="noopener">🌐 Website</a>';
-  if (r.whatsapp_url) btns += '<a class="btn btn-wa" href="' + escapeHtml(r.whatsapp_url) + '" target="_blank" rel="noopener">💬 WhatsApp</a>';
-  if (emailUrl) btns += '<a class="btn btn-email" href="' + escapeHtml(emailUrl) + '">✉️ Email</a>';
+  if (r.google_maps_url) btns += actionBtn(r.google_maps_url, "🗺️", "Maps", "btn-maps", null, false);
+
+  const phoneValid = r.phone_valid !== false && r.phone_valid !== undefined;
+  if (phone) btns += actionBtn("tel:" + escapeHtml(phone), "📞", "Call", "btn-phone", phoneValid ? null : "invalid", !phoneValid);
+
+  if (website) btns += actionBtn(website, "🌐", "Website", "btn-web", r.website_status || "unknown", false);
+
+  const waSt = r.whatsapp_status || "unknown";
+  if (waSt !== "invalid" && r.whatsapp_url) btns += actionBtn(r.whatsapp_url, "💬", "WhatsApp", "btn-wa", waSt, false);
+
+  const zaSt = r.zalo_status || "unknown";
+  if (zaSt !== "invalid" && r.zalo_url) btns += actionBtn(r.zalo_url, "🟣", "Zalo", "btn-zalo", zaSt, false);
+
+  if (r.messenger_url) btns += actionBtn(r.messenger_url, "📘", "Messenger", "btn-messenger", r.messenger_status || "unknown", false);
+
+  if (r.telegram_url) btns += actionBtn(r.telegram_url, "✈️", "Telegram", "btn-telegram", r.telegram_status || "unknown", false);
+
+  const vbSt = r.viber_status || "unknown";
+  if (vbSt !== "invalid" && r.viber_url) btns += actionBtn(r.viber_url, "📞", "Viber", "btn-viber", vbSt, false);
+
+  if (email && emailUrl) btns += actionBtn(emailUrl, "✉️", "Email", "btn-email", r.email_status || "unknown", false);
 
   return `<div class="card">
   <div class="card-body">
@@ -694,6 +1017,7 @@ function renderCard(r) {{
         </div>
       </div>
     </div>
+    ${{badges}}
     <div class="card-address"><span class="label">📍</span> ${{escapeHtml(r.address)}}</div>
     ${{phone ? '<div class="card-phone"><span class="label">📱</span> <a href="tel:' + escapeHtml(phone) + '">' + escapeHtml(phone) + '</a></div>' : ''}}
     ${{website ? '<div class="card-website"><span class="label">🌐</span> <a href="' + escapeHtml(website) + '" target="_blank" rel="noopener">' + escapeHtml(website) + '</a></div>' : ''}}
@@ -707,8 +1031,6 @@ function renderCard(r) {{
 function applyFilters() {{
   const q = (searchInput.value || "").trim().toLowerCase();
   const minRating = parseFloat(ratingFilter.value) || 0;
-  const phoneOnly = hasPhone.checked;
-  const websiteOnly = hasWebsite.checked;
   const sortVal = sortSelect.value;
 
   let list = DATA.slice();
@@ -717,8 +1039,15 @@ function applyFilters() {{
   list = list.filter(r => {{
     if (q && !(r.title || "").toLowerCase().includes(q)) return false;
     if (r.rating < minRating) return false;
-    if (phoneOnly && !r.phone) return false;
-    if (websiteOnly && !r.website) return false;
+    if (filterCheckboxes.phone.checked && !r.phone) return false;
+    if (filterCheckboxes.zalo.checked && !["valid","unknown"].includes(r.zalo_status || "")) return false;
+    if (filterCheckboxes.whatsapp.checked && !["valid","unknown"].includes(r.whatsapp_status || "")) return false;
+    if (filterCheckboxes.messenger.checked && !["valid","unknown"].includes(r.messenger_status || "")) return false;
+    if (filterCheckboxes.email.checked && !r.email) return false;
+    if (filterCheckboxes.website.checked && !r.website) return false;
+    if (filterCheckboxes.telegram.checked && !["valid","unknown"].includes(r.telegram_status || "")) return false;
+    if (filterCheckboxes.viber.checked && !["valid","unknown"].includes(r.viber_status || "")) return false;
+    if (filterCheckboxes.verified.checked && !isVerified(r)) return false;
     return true;
   }});
 
@@ -751,8 +1080,7 @@ searchInput.addEventListener("input", () => {{
 
 ratingFilter.addEventListener("change", applyFilters);
 sortSelect.addEventListener("change", applyFilters);
-hasPhone.addEventListener("change", applyFilters);
-hasWebsite.addEventListener("change", applyFilters);
+Object.values(filterCheckboxes).forEach(cb => cb.addEventListener("change", applyFilters));
 
 // Initial render
 applyFilters();
